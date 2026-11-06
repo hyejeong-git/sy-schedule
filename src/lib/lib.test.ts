@@ -1,7 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest'
 import type { Academy, SessionRecord } from '../types'
 import { addMonthsClamped, dueMarksForRange, monthlyWindow, nextDue } from './billing'
-import { bundledMeals, mergeMeals } from './staticMeals'
+import { bundledMeals, mergeMeals, showAfterSlash } from './staticMeals'
 import { countableDates, regularDates } from './recurrence'
 import { describeCode, parseDaily } from './weather'
 
@@ -119,7 +119,7 @@ describe('weather', () => {
 
 describe('포함된 식단', () => {
   it('11월은 평일 21일치(2~6, 9~13, 16~20, 23~27, 30)가 들어 있다', () => {
-    const nov = bundledMeals.filter((m) => m.date.startsWith('2026-11'))
+    const nov = mergeMeals(bundledMeals, []).filter((m) => m.date.startsWith('2026-11'))
     expect(nov).toHaveLength(21)
     for (const m of nov) {
       const wd = new Date(m.date + 'T00:00:00').getDay()
@@ -127,7 +127,7 @@ describe('포함된 식단', () => {
       expect(wd).toBeLessThanOrEqual(5)
       expect(m.am && m.lunch && m.pm).toBeTruthy()
     }
-    expect(nov.find((m) => m.date === '2026-11-06')?.pm).toBe('한과/기정떡, 유기농요구르트')
+    expect(nov.find((m) => m.date === '2026-11-06')?.pm).toBe('기정떡, 유기농요구르트')
   })
   it('앱에서 고친 식단이 포함된 식단보다 우선한다', () => {
     const merged = mergeMeals(
@@ -136,5 +136,19 @@ describe('포함된 식단', () => {
     )
     expect(merged).toHaveLength(2)
     expect(merged.find((m) => m.date === '2026-11-02')?.am).toBe('x')
+  })
+})
+
+describe('슬래시 메뉴', () => {
+  it('"/"가 있으면 뒤의 것만 보여준다', () => {
+    expect(showAfterSlash('백미밥/흑미밥, 황태두부국, 백김치/깍두기')).toBe('흑미밥, 황태두부국, 깍두기')
+    expect(showAfterSlash('우유')).toBe('우유')
+    expect(showAfterSlash('')).toBe('')
+  })
+  it('11월 점심에는 슬래시가 남지 않고 26일은 한우우엉잡채', () => {
+    const nov = mergeMeals(bundledMeals, [])
+    expect(nov.some((m) => (m.am + m.lunch + m.pm).includes('/'))).toBe(false)
+    expect(nov.find((m) => m.date === '2026-11-26')?.lunch).toContain('한우우엉잡채')
+    expect(nov.find((m) => m.date === '2026-11-02')?.lunch).toContain('흑미밥, 황태두부국')
   })
 })
