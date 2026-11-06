@@ -114,3 +114,9 @@ nav button.on { color: var(--pink); font-weight: 700; }
 .sizes.two { grid-template-columns: 1.6fr 1fr; margin-bottom: 0.5rem; }
 .sizes button.on { background: var(--pink); color: #fff; border-color: var(--pink); }
 .resultbtn { display: block; width: 100%; text-align: left; margin: 0.3rem 0; }
+.badge.auto { background: #e3f2fd; color: #0d47a1; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 1rem; margin-left: 0.4rem; font-weight: 600; }
+label.check { display: flex; align-items: center; gap: 0.5rem; }
+label.check input { width: auto; }
+.mday { display: block; margin-bottom: 0.2rem; }
+.mealday .meal { margin-top: 0.2rem; }
+.mrow input { width: 100%; box-sizing: border-box; }

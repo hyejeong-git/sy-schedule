@@ -15,6 +15,8 @@ export interface DueInfo {
   endDate?: DateStr
   /** 화면에 보여줄 설명 */
   label: string
+  /** 자동이체로 가장 최근에 납부 처리된 날짜 */
+  lastAutoPaid?: DateStr
 }
 
 /** 매달 기간 납부: 해당 월의 납부 가능 기간 */
@@ -45,6 +47,11 @@ export function nthSessionAfter(
 
 /** 학원의 다음 납부일 계산 */
 export function nextDue(academy: Academy, sessions: SessionRecord[], today: DateStr): DueInfo {
+  const info = nextDueRaw(academy, sessions, today)
+  return academy.autoPay && info.date ? { ...info, label: `🏧 자동이체 · ${info.label}` } : info
+}
+
+function nextDueRaw(academy: Academy, sessions: SessionRecord[], today: DateStr): DueInfo {
   const b = academy.billing
   switch (b.type) {
     case 'none':
@@ -58,7 +65,9 @@ export function nextDue(academy: Academy, sessions: SessionRecord[], today: Date
         k += 1
         due = addMonthsClamped(b.lastPaid, b.every * k)
       }
-      return { date: due, label: `${b.every}개월마다` }
+      // 자동이체면 지나간 납부일은 모두 납부된 것으로 본다
+      const lastAutoPaid = academy.autoPay && k > 1 ? addMonthsClamped(b.lastPaid, b.every * (k - 1)) : undefined
+      return { date: due, label: `${b.every}개월마다`, lastAutoPaid }
     }
     case 'monthlyWindow': {
       const startMonth = format(startOfMonth(fromStr(today)), 'yyyy-MM')
@@ -73,13 +82,35 @@ export function nextDue(academy: Academy, sessions: SessionRecord[], today: Date
       return { date: null, label: '납부 일정 없음' }
     }
     case 'sessions': {
-      if (b.nextOverride) return { date: b.nextOverride, label: '직접 지정한 납부일' }
-      if (!b.lastPaid) return { date: null, label: '납부일을 입력해 주세요' }
-      const d = nthSessionAfter(academy, sessions, b.lastPaid, b.count)
-      return { date: d, label: `${b.count}회 수업마다` }
+      if (!b.lastPaid) {
+        return b.nextOverride
+          ? { date: b.nextOverride, label: '직접 지정한 납부일' }
+          : { date: null, label: '납부일을 입력해 주세요' }
+      }
+      let lastPaid = b.lastPaid
+      let override = b.nextOverride
+      let lastAutoPaid: DateStr | undefined
+      // 자동이체면 지나간 납부일은 납부한 것으로 보고, 그 날을 기준으로 다음 납부일을 다시 센다
+      for (let i = 0; i < 60; i++) {
+        const d = override ?? nthSessionAfter(academy, sessions, lastPaid, b.count)
+        if (!academy.autoPay || !d || d >= today) {
+          return {
+            date: d,
+            label: override ? '직접 지정한 납부일' : `${b.count}회 수업마다`,
+            lastAutoPaid,
+          }
+        }
+        lastPaid = d
+        lastAutoPaid = d
+        override = undefined
+      }
+      return { date: null, label: '납부 일정 없음', lastAutoPaid }
     }
   }
 }
+
+/** due: 납부일, window: 납부 기간, auto: 자동이체 */
+export type DueKind = 'due' | 'window' | 'auto'
 
 /** 달력의 한 달 범위 안에서 학원별 납부 표시(날짜 → 학원 목록)를 만든다. */
 export function dueMarksForRange(
@@ -88,9 +119,9 @@ export function dueMarksForRange(
   from: DateStr,
   to: DateStr,
   today: DateStr,
-): Map<DateStr, { academy: Academy; kind: 'due' | 'window' }[]> {
-  const marks = new Map<DateStr, { academy: Academy; kind: 'due' | 'window' }[]>()
-  const push = (d: DateStr, academy: Academy, kind: 'due' | 'window') => {
+): Map<DateStr, { academy: Academy; kind: DueKind }[]> {
+  const marks = new Map<DateStr, { academy: Academy; kind: DueKind }[]>()
+  const push = (d: DateStr, academy: Academy, kind: DueKind) => {
     if (d < from || d > to) return
     const arr = marks.get(d) ?? []
     arr.push({ academy, kind })
@@ -104,8 +135,9 @@ export function dueMarksForRange(
         if (!b.paidMonths.includes(cur)) {
           const w = monthlyWindow(cur, b.startDay, b.endDay)
           let d = w.start
-          while (d <= w.end) {
-            push(d, a, 'window')
+          // 자동이체는 지난 기간이 이미 납부된 것이므로 표시하지 않는다
+          while (d <= w.end && !(a.autoPay && w.end < today)) {
+            push(d, a, a.autoPay ? 'auto' : 'window')
             d = addDaysStr(d, 1)
           }
         }
@@ -113,7 +145,7 @@ export function dueMarksForRange(
       }
     } else {
       const due = nextDue(a, sessions, today)
-      if (due.date) push(due.date, a, 'due')
+      if (due.date) push(due.date, a, a.autoPay ? 'auto' : 'due')
     }
   }
   return marks
