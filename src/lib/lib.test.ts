@@ -1,7 +1,8 @@
-import { describe, expect, it } from 'vitest'
+﻿import { describe, expect, it } from 'vitest'
 import type { Academy, SessionRecord } from '../types'
 import { addMonthsClamped, dueMarksForRange, monthlyWindow, nextDue } from './billing'
-import { parseMealText } from './parseMeal'
+import { blockDates, cleanCellText, dayFromHeader, defaultFirstMonday } from './parseMeal'
+import { findMealGrid, type Gray } from './tableGrid'
 import { countableDates, regularDates } from './recurrence'
 import { describeCode, parseDaily } from './weather'
 
@@ -95,26 +96,6 @@ describe('dueMarksForRange', () => {
   })
 })
 
-describe('parseMealText', () => {
-  it('월~금 3개 행만 뽑는다', () => {
-    const text = [
-      '월  화  수  목  금',
-      '오전간식  우유  요거트  주스  두유  우유',
-      '점심  잡곡밥  쌀밥  김밥  카레  볶음밥',
-      '오후간식  과일  빵  떡  고구마  쿠키',
-      '저녁  무시됨',
-    ].join('\n')
-    const g = parseMealText(text)
-    expect(g.am).toEqual(['우유', '요거트', '주스', '두유', '우유'])
-    expect(g.lunch[2]).toBe('김밥')
-    expect(g.pm[4]).toBe('쿠키')
-  })
-  it('칸이 모자라면 빈 칸으로 채운다', () => {
-    const g = parseMealText('점심  밥  국')
-    expect(g.lunch).toEqual(['밥', '국', '', '', ''])
-  })
-})
-
 describe('weather', () => {
   it('비 소식 문구', () => {
     const w = parseDaily({
@@ -133,5 +114,53 @@ describe('weather', () => {
   })
   it('맑음은 알림 없음', () => {
     expect(describeCode(0).text).toBe('맑음')
+  })
+})
+
+
+describe('식단 글자 정리', () => {
+  it('줄마다 메뉴 하나, 기호 찌꺼기는 버린다', () => {
+    expect(cleanCellText('밀크롤인 \n우유 🌼\n ㅣ \n')).toBe('밀크롤인, 우유')
+  })
+  it('날짜 칸에서 일 숫자를 읽는다', () => {
+    expect(dayFromHeader('10밀(화요일)')).toBe(10)
+    expect(dayFromHeader('abc')).toBeNull()
+  })
+  it('읽은 날짜를 다수결로 월요일 기준을 정한다', () => {
+    // 3번째 칸을 잘못 읽어도(11) 나머지가 맞으면 9~13일
+    const d = blockDates([9, 10, 99 % 31, 12, 13], 2026, 11, new Date(2026, 10, 2))
+    expect(d).toEqual(['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13'])
+  })
+  it('이번 달이 아닌 날은 제외', () => {
+    // 11월 30일(월)이 있는 주: 화~금은 12월
+    expect(blockDates([30, null, null, null, null], 2026, 11, new Date(2026, 10, 30))).toEqual([
+      '2026-11-30', null, null, null, null,
+    ])
+  })
+  it('읽은 날짜가 없으면 기본 추정 사용', () => {
+    expect(blockDates([null, null, null, null, null], 2026, 11, defaultFirstMonday(2026, 11))[0]).toBe('2026-11-02')
+    expect(defaultFirstMonday(2026, 10).getDate()).toBe(28) // 10/1(목)이 속한 주의 월요일은 9/28 
+  })
+})
+
+describe('표 칸 찾기', () => {
+  // 가짜 식단표: 4줄(날짜 20, 오전 36, 중식 110, 오후 36) × 2주, 열 8개 선
+  const W = 600
+  const ys = [10, 30, 66, 176, 212, 232, 268, 378, 414]
+  const xs = [10, 70, 160, 250, 340, 430, 520, 590]
+  const data = new Uint8Array(W * 450).fill(255)
+  for (const y of ys) for (let x = xs[0]; x <= xs[xs.length - 1]; x++) data[y * W + x] = 60
+  for (const x of xs) for (let y = ys[0]; y <= ys[ys.length - 1]; y++) data[y * W + x] = 60
+  const g: Gray = { width: W, height: 450, data }
+  it('주 블록과 월~금 열을 찾는다', () => {
+    const grid = findMealGrid(g)!
+    expect(grid.blocks).toHaveLength(2)
+    expect(grid.blocks[0].lunch).toEqual({ y0: 66, y1: 176 })
+    expect(grid.cols).toHaveLength(5)
+    expect(grid.cols[0]).toEqual([70, 160])
+    expect(grid.cols[4]).toEqual([430, 520])
+  })
+  it('표가 없으면 null', () => {
+    expect(findMealGrid({ width: 100, height: 100, data: new Uint8Array(10000).fill(255) })).toBeNull()
   })
 })

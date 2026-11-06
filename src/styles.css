@@ -77,10 +77,10 @@ nav button.on { color: var(--pink); font-weight: 700; }
 .pill.on { background: var(--pink); color: #fff; border-color: var(--pink); }
 
 .filebtn { display: block; text-align: center; background: var(--pink-soft); border: 2px dashed var(--pink); border-radius: 0.8rem; padding: 0.9rem; font-weight: 700; cursor: pointer; }
-.mealgrid { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.8rem 0; }
-.mealrow { background: #fff; border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.5rem; }
-.mealrow label { font-size: 0.8rem; margin: 0.25rem 0; }
-pre { white-space: pre-wrap; background: #f4f4f4; padding: 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; }
+.week { background: #fff; border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.5rem; margin: 0.5rem 0; }
+.week summary { font-weight: 700; cursor: pointer; }
+.mealday { border-top: 1px dashed var(--line); margin-top: 0.5rem; padding-top: 0.3rem; }
+.mealday label { font-size: 0.8rem; margin: 0.2rem 0; }
 
 .who { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; }
 .greet { font-size: 1.1rem; font-weight: 700; margin: 0.7rem 0.2rem 0; }

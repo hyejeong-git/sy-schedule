@@ -1,116 +1,124 @@
-import { useEffect, useState } from 'react'
-import { addDays, format, startOfWeek } from 'date-fns'
-import type { MealSlot } from '../types'
+import { useMemo, useState } from 'react'
+import { addDays, endOfMonth, format, startOfMonth } from 'date-fns'
+import type { DateStr, MealDay } from '../types'
 import type { Data } from '../lib/useData'
-import { parseMealText, type MealGrid } from '../lib/parseMeal'
-import { toStr } from '../lib/dates'
+import { readMonthlyMeals } from '../lib/ocrMeals'
+import { WEEKDAY_LABELS, fromStr, toStr } from '../lib/dates'
 
-const ROWS: { slot: MealSlot; label: string }[] = [
-  { slot: 'am', label: '오전간식' },
-  { slot: 'lunch', label: '점심' },
-  { slot: 'pm', label: '오후간식' },
+type Fields = Pick<MealDay, 'am' | 'lunch' | 'pm'>
+const EMPTY: Fields = { am: '', lunch: '', pm: '' }
+const SLOTS: { key: keyof Fields; label: string }[] = [
+  { key: 'am', label: '오전간식' },
+  { key: 'lunch', label: '점심' },
+  { key: 'pm', label: '오후간식' },
 ]
-const DAYS = ['월', '화', '수', '목', '금']
+
+/** 그 달의 평일(월~금) 날짜들을 주 단위로 묶는다 */
+function weekdaysByWeek(month: Date): DateStr[][] {
+  const weeks: DateStr[][] = []
+  for (let d = startOfMonth(month); d <= endOfMonth(month); d = addDays(d, 1)) {
+    const wd = d.getDay()
+    if (wd === 0 || wd === 6) continue
+    if (wd === 1 || weeks.length === 0) weeks.push([])
+    weeks[weeks.length - 1].push(toStr(d))
+  }
+  return weeks
+}
 
 export default function Meals({ data }: { data: Data }) {
-  const [monday, setMonday] = useState(() => toStr(startOfWeek(new Date(), { weekStartsOn: 1 })))
-  const [grid, setGrid] = useState<MealGrid>(() => load(data, monday))
+  const [ym, setYm] = useState(() => format(new Date(), 'yyyy-MM'))
+  const [edits, setEdits] = useState<Record<DateStr, Fields>>({})
   const [busy, setBusy] = useState('')
-  const [raw, setRaw] = useState('')
   const [saved, setSaved] = useState(false)
 
-  // 주를 바꾸면 저장된 식단을 불러온다
-  useEffect(() => {
-    setGrid(load(data, monday))
-    setSaved(false)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [monday])
+  const month = useMemo(() => fromStr(`${ym}-01`), [ym])
+  const weeks = useMemo(() => weekdaysByWeek(month), [month])
 
-  const dateOf = (i: number) => toStr(addDays(new Date(monday + 'T00:00:00'), i))
+  const valueOf = (date: DateStr): Fields =>
+    edits[date] ?? data.meals.find((m) => m.date === date) ?? EMPTY
+
+  const edit = (date: DateStr, key: keyof Fields, v: string) => {
+    setSaved(false)
+    setEdits((e) => ({ ...e, [date]: { ...valueOf(date), [key]: v } }))
+  }
 
   const onPhoto = async (file: File) => {
-    setBusy('글자를 읽는 중… (처음엔 언어 데이터를 받느라 1분쯤 걸릴 수 있어요)')
+    setSaved(false)
+    setBusy('표를 찾는 중…')
     try {
-      const { createWorker } = await import('tesseract.js')
-      const worker = await createWorker('kor', 1, {
-        logger: (m) => m.status === 'recognizing text' && setBusy(`글자를 읽는 중… ${Math.round(m.progress * 100)}%`),
-      })
-      const { data: result } = await worker.recognize(file)
-      await worker.terminate()
-      setRaw(result.text)
-      setGrid(parseMealText(result.text))
-      setBusy('')
+      const found = await readMonthlyMeals(file, month.getFullYear(), month.getMonth() + 1, (done, total) =>
+        setBusy(`글자를 읽는 중… ${Math.round((done / total) * 100)}% (처음에는 언어 데이터를 받느라 오래 걸릴 수 있어요)`),
+      )
+      if (!found) {
+        alert('식단표의 표 모양을 찾지 못했어요. 표 전체가 반듯하게 보이는 사진(또는 캡처)으로 다시 올리거나 아래에 직접 입력해 주세요.')
+      } else {
+        setEdits((e) => {
+          const next = { ...e }
+          for (const m of found) next[m.date] = { am: m.am, lunch: m.lunch, pm: m.pm }
+          return next
+        })
+      }
     } catch {
+      alert('사진을 읽지 못했어요. 아래에 직접 입력해 주세요.')
+    } finally {
       setBusy('')
-      alert('사진을 읽지 못했어요. 아래 표에 직접 입력해 주세요.')
     }
   }
 
   const save = async () => {
-    for (let i = 0; i < 5; i++) {
-      const date = dateOf(i)
-      const day = { id: date, date, am: grid.am[i], lunch: grid.lunch[i], pm: grid.pm[i] }
-      if (day.am || day.lunch || day.pm) await data.put('meals', day)
+    for (const [date, f] of Object.entries(edits)) {
+      if (f.am || f.lunch || f.pm) await data.put('meals', { id: date, date, ...f })
       else if (data.meals.some((m) => m.date === date)) await data.remove('meals', date)
     }
+    setEdits({})
     setSaved(true)
   }
 
-  const edit = (slot: MealSlot, i: number, v: string) => {
-    setSaved(false)
-    setGrid((g) => ({ ...g, [slot]: g[slot].map((x, j) => (j === i ? v : x)) }))
-  }
+  const changed = Object.keys(edits).length > 0
 
   return (
     <>
       <div className="monthbar">
-        <strong>🍱 어린이집 식단표</strong>
+        <strong>🍱 어린이집 식단표 (월간)</strong>
       </div>
-      <label>어느 주 식단인가요? (월요일 날짜)
-        <input type="date" value={monday} onChange={(e) => setMonday(toStr(startOfWeek(new Date(e.target.value + 'T00:00:00'), { weekStartsOn: 1 })))} />
+      <label>어느 달 식단표인가요?
+        <input type="month" value={ym} onChange={(e) => e.target.value && (setYm(e.target.value), setEdits({}), setSaved(false))} />
       </label>
       <label className="filebtn">
-        📷 식단표 사진 올리기
-        <input type="file" accept="image/*" hidden onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
+        📷 월간 식단표 사진 올리기
+        <input type="file" accept="image/*" hidden disabled={!!busy} onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />
       </label>
       {busy && <p className="hint">{busy}</p>}
-      <p className="hint">사진에서 읽은 내용은 틀릴 수 있어요. 아래 표에서 확인하고 고쳐 주세요. (월~금 오전간식·점심·오후간식만 사용)</p>
+      <p className="hint">
+        월~금 오전간식·점심·오후간식만 가져와요. 사진에서 읽은 글자는 틀릴 수 있으니 아래에서 확인하고 고쳐 주세요.
+      </p>
 
-      <div className="mealgrid">
-        {ROWS.map((r) => (
-          <div key={r.slot} className="mealrow">
-            <b>{r.label}</b>
-            {DAYS.map((d, i) => (
-              <label key={d}>
-                {d} {format(new Date(dateOf(i) + 'T00:00:00'), 'M/d')}
-                <input value={grid[r.slot][i]} onChange={(e) => edit(r.slot, i, e.target.value)} />
-              </label>
-            ))}
-          </div>
-        ))}
-      </div>
-      <button className="primary" onClick={save}>달력에 반영하기</button>
-      {saved && <p className="ok">저장했어요! 달력에서 날짜를 누르면 식단이 보여요.</p>}
-      {raw && (
-        <details>
-          <summary>읽어낸 원본 글자 보기</summary>
-          <pre>{raw}</pre>
+      {weeks.map((days) => (
+        <details key={days[0]} className="week" open={days.some((d) => d >= format(new Date(), 'yyyy-MM-dd')) || undefined}>
+          <summary>
+            {format(fromStr(days[0]), 'M월 d일')} ~ {format(fromStr(days[days.length - 1]), 'M월 d일')}
+          </summary>
+          {days.map((date) => {
+            const v = valueOf(date)
+            return (
+              <div key={date} className="mealday">
+                <b>
+                  {format(fromStr(date), 'd일')} ({WEEKDAY_LABELS[fromStr(date).getDay()]})
+                </b>
+                {SLOTS.map((s) => (
+                  <label key={s.key}>
+                    {s.label}
+                    <input value={v[s.key]} onChange={(e) => edit(date, s.key, e.target.value)} />
+                  </label>
+                ))}
+              </div>
+            )
+          })}
         </details>
-      )}
+      ))}
+
+      <button className="primary" onClick={save} disabled={!changed}>달력에 반영하기</button>
+      {saved && <p className="ok">저장했어요! 달력에서 날짜를 누르면 식단이 보여요.</p>}
     </>
   )
-}
-
-function load(data: Data, monday: string): MealGrid {
-  const g: MealGrid = { am: ['', '', '', '', ''], lunch: ['', '', '', '', ''], pm: ['', '', '', '', ''] }
-  for (let i = 0; i < 5; i++) {
-    const date = toStr(addDays(new Date(monday + 'T00:00:00'), i))
-    const m = data.meals.find((x) => x.date === date)
-    if (m) {
-      g.am[i] = m.am
-      g.lunch[i] = m.lunch
-      g.pm[i] = m.pm
-    }
-  }
-  return g
 }
