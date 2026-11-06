@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useData } from './lib/useData'
+import { PROFILES, useData } from './lib/useData'
+import Today from './pages/Today'
 import { useWeather } from './lib/useWeather'
 import Home from './pages/Home'
 import Academies from './pages/Academies'
 import Meals from './pages/Meals'
 import SettingsPage from './pages/SettingsPage'
 
-type Tab = 'home' | 'academies' | 'meals' | 'settings'
+type Tab = 'today' | 'home' | 'academies' | 'meals' | 'settings'
 const TABS: { id: Tab; icon: string; label: string }[] = [
+  { id: 'today', icon: '🏠', label: '오늘' },
   { id: 'home', icon: '📅', label: '달력' },
   { id: 'academies', icon: '🎒', label: '학원' },
   { id: 'meals', icon: '🍱', label: '식단' },
@@ -16,7 +18,7 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 
 export default function App() {
   const data = useData()
-  const [tab, setTab] = useState<Tab>('home')
+  const [tab, setTab] = useState<Tab>('today')
   const { weather, weatherFailed } = useWeather(data.settings.latitude, data.settings.longitude)
 
   // 글자 크기: html 글자 크기를 바꾸면 rem을 쓰는 모든 요소가 같이 커진다.
@@ -27,14 +29,21 @@ export default function App() {
   if (data.needFamilyCode) return <FamilyGate onSubmit={data.setFamilyCode} />
   if (data.error) return <p className="center error">{data.error}</p>
   if (!data.ready) return <p className="center">불러오는 중…</p>
+  if (!data.profile) return <ProfileGate onPick={data.setProfile} />
+
+  const me = PROFILES.find((p) => p.id === data.profile)
 
   return (
     <div className="app">
       <header>
         <h1>👧 소율이 일정</h1>
-        {!data.sharing && <span className="badge warn">이 기기에만 저장 중</span>}
+        <span className="who">
+          {!data.sharing && <span className="badge warn">이 기기에만 저장 중</span>}
+          {me && <span>{me.icon} {me.label}</span>}
+        </span>
       </header>
       <main>
+        {tab === 'today' && <Today data={data} weather={weather} />}
         {tab === 'home' && <Home data={data} weather={weather} weatherFailed={weatherFailed} />}
         {tab === 'academies' && <Academies data={data} />}
         {tab === 'meals' && <Meals data={data} />}
@@ -48,6 +57,23 @@ export default function App() {
           </button>
         ))}
       </nav>
+    </div>
+  )
+}
+
+function ProfileGate({ onPick }: { onPick: (p: (typeof PROFILES)[number]['id']) => void }) {
+  return (
+    <div className="gate">
+      <h1>👧 소율이 일정</h1>
+      <p>누구세요?</p>
+      <div className="profiles">
+        {PROFILES.map((p) => (
+          <button key={p.id} onClick={() => onPick(p.id)}>
+            <span>{p.icon}</span>
+            {p.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

@@ -112,7 +112,7 @@ export default function Home({ data, weather, weatherFailed }: Props) {
   )
 }
 
-function DayDetail({ data, date, weather }: { data: Data; date: DateStr; weather?: DayWeather }) {
+export function DayDetail({ data, date, weather }: { data: Data; date: DateStr; weather?: DayWeather }) {
   const today = todayStr()
   const [title, setTitle] = useState('')
   const [time, setTime] = useState('')
@@ -153,6 +153,8 @@ function DayDetail({ data, date, weather }: { data: Data; date: DateStr; weather
         {format(fromStr(date), 'M월 d일')} ({WEEKDAY_LABELS[weekday]})
       </h2>
 
+      <h3>🌤️ 날씨</h3>
+      {!weather && <p className="hint">이 날의 날씨 정보가 없어요 (예보는 오늘부터 약 16일까지)</p>}
       {weather && (
         <div className={`weather ${weather.alert ? 'alert' : ''}`}>
           <span className="big">{weather.icon}</span>
@@ -172,16 +174,19 @@ function DayDetail({ data, date, weather }: { data: Data; date: DateStr; weather
         </div>
       ))}
 
-      {meal && (meal.am || meal.lunch || meal.pm) && (
+      <h3>🍱 식단</h3>
+      {meal && (meal.am || meal.lunch || meal.pm) ? (
         <div className="meal">
-          <h3>🍱 식단</h3>
           <div>오전간식: {meal.am || '-'}</div>
           <div>점심: {meal.lunch || '-'}</div>
           <div>오후간식: {meal.pm || '-'}</div>
         </div>
+      ) : (
+        <p className="hint">등록된 식단이 없어요</p>
       )}
 
-      {classes.length + makeups.length > 0 && <h3>🎒 학원 수업</h3>}
+      <h3>🎒 학원 수업</h3>
+      {classes.length + makeups.length === 0 && <p className="hint">이 날은 학원 수업이 없어요</p>}
       {classes.map(({ a, rec }) => (
         <div key={a.id} className="row">
           <span className="chip" style={{ background: a.color }} />
@@ -229,7 +234,7 @@ function DayDetail({ data, date, weather }: { data: Data; date: DateStr; weather
         </div>
       )}
 
-      <h3>📌 일정</h3>
+      <h3>📌 어린이집·병원 일정</h3>
       {evs.length === 0 && <p className="hint">등록된 일정이 없어요</p>}
       {evs.map((e) => (
         <div key={e.id} className="row">

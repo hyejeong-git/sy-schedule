@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Data } from '../lib/useData'
+import { PROFILES, type Data } from '../lib/useData'
 import { searchCity, type GeoResult } from '../lib/weather'
 
 const SIZES = [
@@ -30,8 +30,19 @@ export default function SettingsPage({ data }: { data: Data }) {
       <div className="monthbar"><strong>⚙️ 설정</strong></div>
 
       <section className="card">
+        <h3>누구세요?</h3>
+        <div className="profiles small">
+          {PROFILES.map((p) => (
+            <button key={p.id} className={data.profile === p.id ? 'on' : ''} onClick={() => data.setProfile(p.id)}>
+              <span>{p.icon}</span>
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section className="card">
         <h3>글자 크기</h3>
-        <p className="hint">이 폰에만 적용돼요. 할머니 폰에서 크게 맞춰 두세요.</p>
         <div className="sizes">
           {SIZES.map((s) => (
             <button key={s.v} className={data.settings.fontScale === s.v ? 'on' : ''} onClick={() => data.setFontScale(s.v)}>
@@ -79,7 +90,7 @@ export default function SettingsPage({ data }: { data: Data }) {
         {data.sharing ? (
           <>
             <p>가족 코드: <b>{data.familyCode}</b></p>
-            <p className="hint">아빠·할머니 폰에서 같은 코드를 입력하면 일정이 함께 보여요.</p>
+            <p className="hint">가족 모두 같은 코드를 입력하면 일정이 함께 보여요.</p>
           </>
         ) : (
           <p className="hint">Firebase가 아직 설정되지 않아 이 기기에만 저장돼요. README의 안내를 따라 설정하면 가족과 공유됩니다.</p>

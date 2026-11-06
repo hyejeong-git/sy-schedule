@@ -3,6 +3,12 @@ import type { Academy, CalEvent, MealDay, SessionRecord, Settings } from '../typ
 import { DEFAULT_SETTINGS } from '../types'
 import { createFirebaseBackend, createLocalBackend, firebaseConfigured, type Backend, type Col } from './backend'
 
+export type Profile = 'grandma' | 'dad' | 'mom'
+export const PROFILES: { id: Profile; icon: string; label: string }[] = [
+  { id: 'grandma', icon: '👵', label: '할머니' },
+  { id: 'dad', icon: '👨', label: '아빠' },
+  { id: 'mom', icon: '👩', label: '엄마' },
+]
 const FAMILY_KEY = 'sy:familyCode'
 export const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
 
@@ -60,11 +66,19 @@ export function useData() {
     setFamilyCodeState(code.trim())
   }
 
-  // 글자 크기는 기기마다 다르게 쓸 수 있도록(할머니 폰만 크게) 기기에 저장한다.
+  // 글자 크기와 "누구세요?" 선택은 기기마다 따로 저장한다.
   const [fontScale, setFontScaleState] = useState<number>(() => Number(localStorage.getItem('sy:fontScale')) || 1)
   const setFontScale = (n: number) => {
     localStorage.setItem('sy:fontScale', String(n))
     setFontScaleState(n)
+  }
+
+  const [profile, setProfileState] = useState<Profile | ''>(() => (localStorage.getItem('sy:profile') as Profile | null) ?? '')
+  const setProfile = (p: Profile) => {
+    localStorage.setItem('sy:profile', p)
+    setProfileState(p)
+    // 처음 고르는 경우, 할머니는 글자를 기본으로 크게 보여준다.
+    if (p === 'grandma' && !localStorage.getItem('sy:fontScale')) setFontScale(1.25)
   }
 
   const settings = useMemo(() => ({ ...settingsDoc, fontScale }), [settingsDoc, fontScale])
@@ -81,6 +95,8 @@ export function useData() {
     meals,
     settings,
     setFontScale,
+    profile,
+    setProfile,
     saveSettings: (s: Partial<Settings>) => put('settings', { ...settingsDoc, ...s, id: 'main' }),
     put,
     remove,
