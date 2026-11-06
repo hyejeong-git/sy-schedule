@@ -63,6 +63,13 @@ nav button.on { color: var(--pink); font-weight: 700; }
 .payrow { border-left: 5px solid; background: #fffbe6; padding: 0.5rem; border-radius: 0.4rem; margin-top: 0.5rem; }
 .meal { background: #f3fbef; border-radius: 0.6rem; padding: 0.4rem 0.7rem; margin-top: 0.5rem; }
 .meal h3 { margin: 0.2rem 0; }
+/* 식단: 앞에 색 막대 구분선, 라벨은 작고 굵게·색을 입히고, 메뉴는 보통 굵기로 */
+.mrow { --c: #8a8a8a; border-left: 5px solid var(--c); padding: 0.15rem 0 0.15rem 0.6rem; margin: 0.45rem 0; }
+.mrow.am { --c: #f08c3a; }
+.mrow.lunch { --c: #4caf50; }
+.mrow.pm { --c: #4a90d9; }
+.mlabel { display: block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.02em; color: var(--c); }
+.mmenu { display: block; font-size: 1rem; font-weight: 400; color: var(--ink); line-height: 1.5; }
 .row { display: flex; gap: 0.4rem; align-items: center; margin: 0.35rem 0; flex-wrap: wrap; }
 .row .grow, .grow { flex: 1; }
 .chip { width: 0.8rem; height: 0.8rem; border-radius: 3px; flex: none; }

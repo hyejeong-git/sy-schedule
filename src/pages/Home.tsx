@@ -216,9 +216,18 @@ export function DayDetail({
       <h3>🍱 식단</h3>
       {meal && (meal.am || meal.lunch || meal.pm) ? (
         <div className="meal">
-          <div>오전간식: {meal.am || '-'}</div>
-          <div>점심: {meal.lunch || '-'}</div>
-          <div>오후간식: {meal.pm || '-'}</div>
+          {(
+            [
+              ['am', '오전간식', meal.am],
+              ['lunch', '점심', meal.lunch],
+              ['pm', '오후간식', meal.pm],
+            ] as const
+          ).map(([k, label, text]) => (
+            <div key={k} className={`mrow ${k}`}>
+              <span className="mlabel">{label}</span>
+              <span className="mmenu">{text || '-'}</span>
+            </div>
+          ))}
         </div>
       ) : (
         <p className="hint">등록된 식단이 없어요</p>
