@@ -5,11 +5,12 @@ import { familyCodeProblem } from './familyCode'
 import { bundledMeals, mergeMeals } from './staticMeals'
 import { createFirebaseBackend, createLocalBackend, firebaseConfigured, type Backend, type Col } from './backend'
 
-export type Profile = 'grandma' | 'dad' | 'mom'
-export const PROFILES: { id: Profile; icon: string; label: string }[] = [
+export type Profile = 'grandma' | 'dad' | 'mom' | 'family'
+export const PROFILES: { id: Profile; icon: string; label: string; short?: string }[] = [
   { id: 'grandma', icon: '👵', label: '할머니' },
   { id: 'dad', icon: '👨', label: '아빠' },
   { id: 'mom', icon: '👩', label: '엄마' },
+  { id: 'family', icon: '💗', label: '소율이를 사랑하는 가족', short: '가족' },
 ]
 const FAMILY_KEY = 'sy:familyCode'
 export const newId = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
