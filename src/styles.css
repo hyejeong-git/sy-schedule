@@ -99,6 +99,8 @@ nav button.on { color: var(--pink); font-weight: 700; }
 .profiles.small button span { font-size: 1.6rem; }
 .profiles button.on { background: var(--pink-soft); border-color: var(--pink); }
 .sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; margin: 0.4rem 0; }
+.backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 20; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.modal { background: #fff; border-radius: 1rem; padding: 1rem; width: 100%; max-width: 420px; max-height: 90vh; overflow-y: auto; }
 .chart { width: 100%; height: auto; margin-top: 0.3rem; }
 .up { color: #2e7d32; } .down { color: #c62828; }
 .growthrow { border-bottom: 1px dashed var(--line); padding: 0.3rem 0; }

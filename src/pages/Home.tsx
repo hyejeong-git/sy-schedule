@@ -1,11 +1,12 @@
 import { useMemo, useState } from 'react'
 import { addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, eachDayOfInterval, getDay } from 'date-fns'
-import type { CalEvent, DateStr, EventCategory } from '../types'
+import Modal from '../components/Modal'
+import type { Academy, CalEvent, DateStr, EventCategory } from '../types'
 import type { Data } from '../lib/useData'
 import { newId } from '../lib/useData'
 import { dueMarksForRange } from '../lib/billing'
 import { regularDates } from '../lib/recurrence'
-import { WEEKDAY_LABELS, fromStr, todayStr, toStr } from '../lib/dates'
+import { WEEKDAY_LABELS, addDaysStr, fromStr, todayStr, toStr } from '../lib/dates'
 import type { DayWeather, HourWeather } from '../lib/weather'
 
 const CAT: Record<EventCategory, { label: string; icon: string; color: string }> = {
@@ -150,11 +151,8 @@ export function DayDetail({
   hours?: HourWeather[]
 }) {
   const today = todayStr()
-  const [title, setTitle] = useState('')
-  const [time, setTime] = useState('')
-  const [cat, setCat] = useState<EventCategory>('daycare')
-  const [memo, setMemo] = useState('')
-  const [makeupAcademy, setMakeupAcademy] = useState('')
+  const [eventOpen, setEventOpen] = useState(false)
+  const [makeupFor, setMakeupFor] = useState<Academy | null>(null)
 
   const evs = data.events.filter((e) => e.date === date).sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
   const meal = data.meals.find((m) => m.date === date)
@@ -174,13 +172,17 @@ export function DayDetail({
     if (status) await data.put('sessions', { id: newId(), academyId, date, status })
   }
 
-  const addEvent = async () => {
-    if (!title.trim()) return
-    const ev: CalEvent = { id: newId(), title: title.trim(), date, category: cat, ...(time ? { time } : {}), ...(memo.trim() ? { memo: memo.trim() } : {}) }
-    await data.put('events', ev)
-    setTitle('')
-    setTime('')
-    setMemo('')
+  const addEvent = async (ev: Omit<CalEvent, 'id' | 'date'>) => {
+    await data.put('events', { id: newId(), date, ...ev })
+    setEventOpen(false)
+  }
+
+  /** 이 날 수업은 빠지는 것으로 보고(결석 처리), 정한 날짜에 보강 수업을 추가한다 */
+  const addMakeup = async (academy: Academy, makeupDate: DateStr) => {
+    const rec = data.sessions.find((s) => s.academyId === academy.id && s.date === date)
+    if (!rec) await data.put('sessions', { id: newId(), academyId: academy.id, date, status: 'absent' })
+    await data.put('sessions', { id: newId(), academyId: academy.id, date: makeupDate, status: 'makeup' })
+    setMakeupFor(null)
   }
 
   return (
@@ -241,6 +243,7 @@ export function DayDetail({
               <button className="small" onClick={() => setStatus(a.id, 'cancelled')}>휴강</button>
             </>
           )}
+          <button className="small" onClick={() => setMakeupFor(a)}>보강</button>
         </div>
       ))}
       {makeups.map(({ s, a }) => (
@@ -250,28 +253,10 @@ export function DayDetail({
           <button className="small" onClick={() => data.remove('sessions', s.id)}>삭제</button>
         </div>
       ))}
-      {data.academies.length > 0 && (
-        <div className="row">
-          <select value={makeupAcademy} onChange={(e) => setMakeupAcademy(e.target.value)}>
-            <option value="">보강 수업 추가…</option>
-            {data.academies.map((a) => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-          <button
-            className="small"
-            disabled={!makeupAcademy}
-            onClick={async () => {
-              await data.put('sessions', { id: newId(), academyId: makeupAcademy, date, status: 'makeup' })
-              setMakeupAcademy('')
-            }}
-          >
-            추가
-          </button>
-        </div>
-      )}
-
-      <h3>📌 어린이집·병원 일정</h3>
+      <div className="row">
+        <h3 className="grow">📌 어린이집·병원 일정</h3>
+        <button className="primary small" onClick={() => setEventOpen(true)}>+ 추가</button>
+      </div>
       {evs.length === 0 && <p className="hint">등록된 일정이 없어요</p>}
       {evs.map((e) => (
         <div key={e.id} className="row">
@@ -285,19 +270,68 @@ export function DayDetail({
         </div>
       ))}
 
-      <div className="form">
-        <div className="row">
-          <select value={cat} onChange={(e) => setCat(e.target.value as EventCategory)}>
-            {Object.entries(CAT).map(([k, v]) => (
-              <option key={k} value={k}>{v.icon} {v.label}</option>
-            ))}
-          </select>
-          <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-        </div>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="일정 제목 (예: 예방접종)" />
-        <input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="메모 (선택)" />
-        <button className="primary" onClick={addEvent} disabled={!title.trim()}>일정 추가</button>
-      </div>
+      {eventOpen && (
+        <Modal title={`${format(fromStr(date), 'M월 d일')} 일정 추가`} onClose={() => setEventOpen(false)}>
+          <EventForm onSave={addEvent} />
+        </Modal>
+      )}
+      {makeupFor && (
+        <Modal title={`${makeupFor.name} 보강 수업`} onClose={() => setMakeupFor(null)}>
+          <MakeupForm academy={makeupFor} originalDate={date} onSave={(d) => addMakeup(makeupFor, d)} />
+        </Modal>
+      )}
     </section>
+  )
+}
+
+function EventForm({ onSave }: { onSave: (e: Omit<CalEvent, 'id' | 'date'>) => void }) {
+  const [title, setTitle] = useState('')
+  const [time, setTime] = useState('')
+  const [cat, setCat] = useState<EventCategory>('daycare')
+  const [memo, setMemo] = useState('')
+  return (
+    <div className="form">
+      <label>종류
+        <select value={cat} onChange={(e) => setCat(e.target.value as EventCategory)}>
+          {Object.entries(CAT).map(([k, v]) => (
+            <option key={k} value={k}>{v.icon} {v.label}</option>
+          ))}
+        </select>
+      </label>
+      <label>제목
+        <input autoFocus value={title} onChange={(e) => setTitle(e.target.value)} placeholder="예: 예방접종" />
+      </label>
+      <label>시간 (선택)
+        <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+      </label>
+      <label>메모 (선택)
+        <input value={memo} onChange={(e) => setMemo(e.target.value)} />
+      </label>
+      <button
+        className="primary"
+        disabled={!title.trim()}
+        onClick={() =>
+          onSave({ title: title.trim(), category: cat, ...(time ? { time } : {}), ...(memo.trim() ? { memo: memo.trim() } : {}) })
+        }
+      >
+        저장
+      </button>
+    </div>
+  )
+}
+
+function MakeupForm({ academy, originalDate, onSave }: { academy: Academy; originalDate: DateStr; onSave: (d: DateStr) => void }) {
+  const [d, setD] = useState(addDaysStr(originalDate, 7))
+  return (
+    <div className="form">
+      <label>보강 받는 날짜
+        <input type="date" value={d} onChange={(e) => setD(e.target.value)} />
+      </label>
+      <p className="hint">
+        {format(fromStr(originalDate), 'M월 d일')} {academy.name} 수업은 결석으로 처리되고, 정한 날짜에 보강 수업이 달력에 추가돼요.
+        납부일 계산에는 보강 수업만 세어져요.
+      </p>
+      <button className="primary" disabled={!d} onClick={() => onSave(d)}>저장</button>
+    </div>
   )
 }
