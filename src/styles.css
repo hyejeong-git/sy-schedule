@@ -1,0 +1,87 @@
+:root {
+  --pink: #ff5d7a;
+  --pink-soft: #ffe3e8;
+  --bg: #fff8f0;
+  --ink: #2d2a2a;
+  --line: #eadfd6;
+  font-family: -apple-system, 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.4; }
+button, input, select { font: inherit; }
+button { border: 1px solid var(--line); background: #fff; border-radius: 0.6rem; padding: 0.5rem 0.8rem; cursor: pointer; color: var(--ink); }
+button.primary { background: var(--pink); color: #fff; border-color: var(--pink); font-weight: 700; }
+button.danger { color: #c62828; }
+button.small { padding: 0.25rem 0.6rem; font-size: 0.85rem; }
+button:disabled { opacity: 0.45; cursor: default; }
+input, select { width: 100%; padding: 0.5rem; border: 1px solid var(--line); border-radius: 0.6rem; background: #fff; }
+label { display: block; font-size: 0.9rem; margin: 0.5rem 0; }
+
+.app { max-width: 640px; margin: 0 auto; padding-bottom: 5rem; }
+header { display: flex; align-items: center; justify-content: space-between; padding: 0.7rem 1rem; background: var(--pink); color: #fff; position: sticky; top: 0; z-index: 5; }
+header h1 { font-size: 1.2rem; margin: 0; }
+main { padding: 0.5rem 0.7rem; }
+nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; background: #fff; border-top: 1px solid var(--line); max-width: 640px; margin: 0 auto; }
+nav button { flex: 1; border: 0; border-radius: 0; background: none; padding: 0.4rem 0; font-size: 0.8rem; color: #777; }
+nav button span { display: block; font-size: 1.3rem; }
+nav button.on { color: var(--pink); font-weight: 700; }
+
+.badge.warn { background: #fff3cd; color: #7a5b00; font-size: 0.7rem; padding: 0.15rem 0.5rem; border-radius: 1rem; }
+.center { text-align: center; margin-top: 30vh; }
+.error { color: #c62828; }
+.gate { max-width: 420px; margin: 12vh auto; padding: 1rem; display: flex; flex-direction: column; gap: 0.7rem; text-align: center; }
+
+.monthbar { display: flex; align-items: center; gap: 0.5rem; margin: 0.6rem 0; }
+.monthbar strong { flex: 1; text-align: center; font-size: 1.1rem; }
+.grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.grid.head div { text-align: center; font-size: 0.8rem; padding: 0.2rem 0; color: #777; }
+.sun { color: #e53935; } .sat { color: #1e6fd9; }
+.cell { position: relative; min-height: 4.3rem; background: #fff; border: 1px solid var(--line); border-radius: 0.4rem; padding: 0.15rem; text-align: left; display: flex; flex-direction: column; align-items: flex-start; }
+.cell.other { opacity: 0.4; }
+.cell.today { border-color: var(--pink); }
+.cell.sel { background: var(--pink-soft); border: 2px solid var(--pink); }
+.cell .num { font-size: 0.85rem; font-weight: 700; }
+.cell .wx { font-size: 0.85rem; line-height: 1; }
+.cell .wx small { font-size: 0.7rem; margin-left: 1px; }
+.cell .dots { display: flex; gap: 2px; flex-wrap: wrap; margin-top: auto; }
+.cell .dots i { width: 0.5rem; height: 0.5rem; border-radius: 50%; display: block; }
+.cell .dots i.sq { border-radius: 2px; }
+.cell .pay { position: absolute; right: 1px; top: 1px; font-size: 0.8rem; }
+
+.detail { background: #fff; border-radius: 0.8rem; padding: 0.8rem; margin-top: 0.7rem; border: 1px solid var(--line); }
+.detail h2 { margin: 0 0 0.5rem; font-size: 1.15rem; }
+.detail h3, .card h3 { margin: 0.9rem 0 0.3rem; font-size: 1rem; }
+.weather { display: flex; gap: 0.7rem; align-items: center; background: #eef6ff; border-radius: 0.6rem; padding: 0.6rem; }
+.weather.alert { background: #fff1e0; }
+.weather .big { font-size: 2.2rem; }
+.warnText { color: #c25b00; font-weight: 700; }
+.payrow { border-left: 5px solid; background: #fffbe6; padding: 0.5rem; border-radius: 0.4rem; margin-top: 0.5rem; }
+.meal { background: #f3fbef; border-radius: 0.6rem; padding: 0.4rem 0.7rem; margin-top: 0.5rem; }
+.meal h3 { margin: 0.2rem 0; }
+.row { display: flex; gap: 0.4rem; align-items: center; margin: 0.35rem 0; flex-wrap: wrap; }
+.row .grow, .grow { flex: 1; }
+.chip { width: 0.8rem; height: 0.8rem; border-radius: 3px; flex: none; }
+.strike { text-decoration: line-through; color: #999; }
+.memo { color: #777; }
+.hint { color: #777; font-size: 0.85rem; }
+.ok { color: #2e7d32; font-weight: 700; }
+.form { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.8rem; }
+.form > div > .row { margin-top: 0.2rem; }
+
+.card { background: #fff; border: 1px solid var(--line); border-left: 6px solid var(--pink); border-radius: 0.7rem; padding: 0.7rem; margin: 0.6rem 0; }
+.duebox { background: #fff8e1; border-radius: 0.5rem; padding: 0.4rem 0.6rem; margin: 0.4rem 0; }
+.dueDate { font-weight: 800; font-size: 1.05rem; }
+.swatch { width: 2rem; height: 2rem; border-radius: 50%; padding: 0; border: 3px solid transparent; }
+.swatch.on { border-color: #333; }
+.pill { border-radius: 2rem; width: 2.4rem; padding: 0.4rem 0; text-align: center; }
+.pill.on { background: var(--pink); color: #fff; border-color: var(--pink); }
+
+.filebtn { display: block; text-align: center; background: var(--pink-soft); border: 2px dashed var(--pink); border-radius: 0.8rem; padding: 0.9rem; font-weight: 700; cursor: pointer; }
+.mealgrid { display: flex; flex-direction: column; gap: 0.8rem; margin: 0.8rem 0; }
+.mealrow { background: #fff; border: 1px solid var(--line); border-radius: 0.6rem; padding: 0.5rem; }
+.mealrow label { font-size: 0.8rem; margin: 0.25rem 0; }
+pre { white-space: pre-wrap; background: #f4f4f4; padding: 0.5rem; border-radius: 0.5rem; font-size: 0.8rem; }
+
+.sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; margin: 0.4rem 0; }
+.sizes button.on { background: var(--pink); color: #fff; border-color: var(--pink); }
+.resultbtn { display: block; width: 100%; text-align: left; margin: 0.3rem 0; }
