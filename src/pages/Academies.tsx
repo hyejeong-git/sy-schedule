@@ -43,7 +43,7 @@ function AcademyCard({ a, data, today, onEdit }: { a: Academy; data: Data; today
   return (
     <section className="card" style={{ borderLeftColor: a.color }}>
       <div className="row">
-        <b className="grow">{a.name}</b>
+        <b className="grow">{a.name}{a.autoPay && <span className="badge auto">🏧 자동이체</span>}</b>
         <button className="small" onClick={onEdit}>수정</button>
       </div>
       <div className="hint">
@@ -59,22 +59,23 @@ function AcademyCard({ a, data, today, onEdit }: { a: Academy; data: Data; today
               다음 납부 {due.endDate ? `${fmt(due.date)} ~ ${fmt(due.endDate)}` : fmt(due.date)}
             </>
           ) : (
-            '납부일을 기록해 주세요'
+            a.autoPay ? '기준이 되는 납부일을 기록해 주세요' : '납부일을 기록해 주세요'
           )}
         </div>
+        {due.lastAutoPaid && <small className="hint">최근 자동이체 납부 처리: {fmt(due.lastAutoPaid)}</small>}
       </div>
 
       {(b.type === 'months' || b.type === 'sessions') && (
         <>
           <div className="row">
-            <label className="grow">납부한 날
+            <label className="grow">{a.autoPay ? '기준 납부일 (마지막으로 낸 날)' : '납부한 날'}
               <input type="date" value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
             </label>
             <button
               className="primary small"
               onClick={() => save(b.type === 'months' ? { ...b, lastPaid: paidOn } : { type: 'sessions', count: b.count, lastPaid: paidOn })}
             >
-              납부 기록
+              {a.autoPay ? '기준일 저장' : '납부 기록'}
             </button>
           </div>
           {b.lastPaid && <small className="hint">마지막 납부: {fmt(b.lastPaid)}</small>}
@@ -91,7 +92,7 @@ function AcademyCard({ a, data, today, onEdit }: { a: Academy; data: Data; today
         </div>
       )}
 
-      {b.type === 'monthlyWindow' && due.date && (
+      {b.type === 'monthlyWindow' && due.date && !a.autoPay && (
         <div className="row">
           <button
             className="primary small"
@@ -121,6 +122,7 @@ function AcademyForm({ initial, data, onDone }: { initial: Academy | null; data:
   const [startDay, setStartDay] = useState(ib?.type === 'monthlyWindow' ? ib.startDay : 18)
   const [endDay, setEndDay] = useState(ib?.type === 'monthlyWindow' ? ib.endDay : 23)
   const [count, setCount] = useState(ib?.type === 'sessions' ? ib.count : 13)
+  const [autoPay, setAutoPay] = useState(initial?.autoPay ?? false)
 
   const toggle = (d: number) => setDays((x) => (x.includes(d) ? x.filter((y) => y !== d) : [...x, d].sort()))
 
@@ -146,6 +148,7 @@ function AcademyForm({ initial, data, onDone }: { initial: Academy | null; data:
       color,
       schedule: days.map((weekday) => ({ weekday, ...(time ? { time } : {}) })),
       billing: buildBilling(),
+      ...(autoPay && type !== 'none' ? { autoPay: true } : {}),
     }
     await data.put('academies', a)
     onDone()
@@ -183,6 +186,12 @@ function AcademyForm({ initial, data, onDone }: { initial: Academy | null; data:
           <option value="none">납부 표시 안 함</option>
         </select>
       </label>
+      {type !== 'none' && (
+        <label className="check">
+          <input type="checkbox" checked={autoPay} onChange={(e) => setAutoPay(e.target.checked)} />
+          🏧 자동이체 (납부일이 지나면 자동으로 납부한 것으로 처리)
+        </label>
+      )}
       {type === 'months' && (
         <label>몇 개월마다?
           <input type="number" min={1} value={every} onChange={(e) => setEvery(Math.max(1, Number(e.target.value)))} />

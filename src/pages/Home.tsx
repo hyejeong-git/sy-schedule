@@ -104,7 +104,7 @@ export default function Home({ data, weather, hourly, weatherFailed }: Props) {
                   <i key={i} className="sq" style={{ background: c }} />
                 ))}
               </span>
-              {dues.length > 0 && <span className="pay">💰</span>}
+              {dues.length > 0 && <span className="pay">{dues.every((x) => x.kind === 'auto') ? '🏧' : '💰'}</span>}
             </button>
           )
         })}
@@ -215,7 +215,8 @@ export function DayDetail({
 
       {dues.map(({ academy, kind }) => (
         <div key={academy.id} className="payrow" style={{ borderColor: academy.color }}>
-          💰 <b>{academy.name}</b> {kind === 'window' ? '납부 기간이에요' : '납부일이에요'}
+          {kind === 'auto' ? '🏧' : '💰'} <b>{academy.name}</b>{' '}
+          {kind === 'auto' ? '자동이체 예정이에요 (직접 낼 필요 없어요)' : kind === 'window' ? '납부 기간이에요' : '납부일이에요'}
         </div>
       ))}
 

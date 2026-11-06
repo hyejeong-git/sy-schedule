@@ -33,6 +33,8 @@ export interface Academy {
   color: string
   schedule: WeeklySlot[]
   billing: BillingRule
+  /** 자동이체: 납부일이 지나면 납부한 것으로 자동 반영한다 */
+  autoPay?: boolean
   endedAt?: DateStr
 }
 

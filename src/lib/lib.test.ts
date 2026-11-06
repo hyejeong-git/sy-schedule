@@ -212,3 +212,35 @@ describe('familyCodeProblem', () => {
     expect(familyCodeProblem('a'.repeat(101))).not.toBeNull()
   })
 })
+
+describe('자동이체', () => {
+  it('N개월: 지난 납부일은 납부 처리되고 다음 납부일이 표시된다', () => {
+    const a = base({ autoPay: true, billing: { type: 'months', every: 3, lastPaid: '2026-02-10' } })
+    const d = nextDue(a, [], '2026-11-06')
+    expect(d.date).toBe('2026-11-10')
+    expect(d.lastAutoPaid).toBe('2026-08-10')
+    expect(d.label).toContain('자동이체')
+  })
+  it('자동이체가 아니면 납부 처리 표시가 없다', () => {
+    const a = base({ billing: { type: 'months', every: 3, lastPaid: '2026-02-10' } })
+    expect(nextDue(a, [], '2026-11-06').lastAutoPaid).toBeUndefined()
+  })
+  it('N회 수업: 지난 납부일을 건너뛰고 다음 납부일을 센다', () => {
+    const a = base({ autoPay: true, billing: { type: 'sessions', count: 3, lastPaid: '2026-10-01' } })
+    const manual = base({ billing: { type: 'sessions', count: 3, lastPaid: '2026-10-01' } })
+    const d = nextDue(a, [], '2026-11-06')
+    expect(d.date! >= '2026-11-06').toBe(true)
+    expect(d.lastAutoPaid).toBeDefined()
+    expect(nextDue(manual, [], '2026-11-06').date! < '2026-11-06').toBe(true)
+  })
+  it('매달 기간: 지난 기간은 달력에 표시하지 않고 표시는 auto', () => {
+    const a = base({ autoPay: true, billing: { type: 'monthlyWindow', startDay: 18, endDay: 23, paidMonths: [] } })
+    const m = dueMarksForRange([a], [], '2026-10-01', '2026-11-30', '2026-11-06')
+    expect(m.has('2026-10-20')).toBe(false)
+    expect(m.get('2026-11-20')?.[0].kind).toBe('auto')
+  })
+  it('납부일 하루짜리도 auto로 표시', () => {
+    const a = base({ autoPay: true, billing: { type: 'months', every: 3, lastPaid: '2026-08-10' } })
+    expect(dueMarksForRange([a], [], '2026-11-01', '2026-11-30', '2026-11-06').get('2026-11-10')?.[0].kind).toBe('auto')
+  })
+})

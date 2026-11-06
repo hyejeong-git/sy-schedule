@@ -79,23 +79,21 @@ export default function Meals({ data }: { data: Data }) {
             const v = valueOf(date)
             return (
               <div key={date} className="mealday">
-                <b>
+                <b className="mday">
                   {format(fromStr(date), 'd일')} ({WEEKDAY_LABELS[fromStr(date).getDay()]})
                 </b>
-                {editing ? (
-                  SLOTS.map((s) => (
-                    <label key={s.key}>
-                      {s.label}
-                      <input value={v[s.key]} onChange={(e) => edit(date, s.key, e.target.value)} />
-                    </label>
-                  ))
-                ) : (
-                  SLOTS.map((s) => (
-                    <div key={s.key} className="mealline">
-                      <span>{s.label}</span> {v[s.key] || '-'}
+                <div className="meal">
+                  {SLOTS.map((s) => (
+                    <div key={s.key} className={`mrow ${s.key}`}>
+                      <span className="mlabel">{s.label}</span>
+                      {editing ? (
+                        <input value={v[s.key]} onChange={(e) => edit(date, s.key, e.target.value)} aria-label={s.label} />
+                      ) : (
+                        <span className="mmenu">{v[s.key] || '-'}</span>
+                      )}
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
             )
           })}
