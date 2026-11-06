@@ -1,4 +1,5 @@
 ﻿import { describe, expect, it } from 'vitest'
+import { familyCodeProblem } from './familyCode'
 import type { Academy, SessionRecord } from '../types'
 import { addMonthsClamped, dueMarksForRange, monthlyWindow, nextDue } from './billing'
 import { bundledMeals, mergeMeals, showAfterSlash } from './staticMeals'
@@ -195,5 +196,19 @@ describe('성장 기록', () => {
   })
   it('점이 하나면 가운데', () => {
     expect(chartPoints(series(recs.slice(0, 1), 'height'), 300, 200).pts[0].x).toBe(150)
+  })
+})
+
+describe('familyCodeProblem', () => {
+  it('정상 코드는 통과', () => {
+    expect(familyCodeProblem('soyul-family-2026')).toBeNull()
+    expect(familyCodeProblem('  가족코드입니다  ')).toBeNull()
+  })
+  it('짧거나 경로에 못 쓰는 코드는 안내 문구를 돌려준다', () => {
+    expect(familyCodeProblem('abc')).not.toBeNull()
+    expect(familyCodeProblem('abc/def-ghi')).not.toBeNull()
+    expect(familyCodeProblem('abc\\def-ghi')).not.toBeNull()
+    expect(familyCodeProblem('__secret__')).not.toBeNull()
+    expect(familyCodeProblem('a'.repeat(101))).not.toBeNull()
   })
 })

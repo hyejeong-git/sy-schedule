@@ -9,6 +9,8 @@ export function useWeather(lat: number, lon: number) {
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
+    setData(EMPTY)
+    setFailed(false)
     const key = `sy:weather2:${lat.toFixed(2)},${lon.toFixed(2)}`
     try {
       const cached = JSON.parse(localStorage.getItem(key) ?? 'null')
