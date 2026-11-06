@@ -15,7 +15,7 @@ type Doc = { id: string } & Record<string, unknown>
 
 export interface Backend {
   /** 변경될 때마다 해당 컬렉션의 전체 목록을 전달한다 */
-  subscribe(col: Col, cb: (items: Doc[]) => void): () => void
+  subscribe(col: Col, cb: (items: Doc[]) => void, onError?: (e: Error) => void): () => void
   put(col: Col, item: Doc): Promise<void>
   remove(col: Col, id: string): Promise<void>
 }
@@ -64,8 +64,12 @@ export async function createFirebaseBackend(familyCode: string): Promise<Backend
   const db: Firestore = getFirestore(app)
   const colRef = (c: Col) => collection(db, 'families', familyCode, c)
   return {
-    subscribe(c, cb) {
-      return onSnapshot(colRef(c), (snap) => cb(snap.docs.map((d) => ({ ...d.data(), id: d.id }))))
+    subscribe(c, cb, onError) {
+      return onSnapshot(
+        colRef(c),
+        (snap) => cb(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
+        (e) => onError?.(e),
+      )
     },
     async put(c, item) {
       await setDoc(doc(colRef(c), item.id), clean(item))

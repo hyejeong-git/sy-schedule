@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { addMonths, endOfMonth, endOfWeek, format, startOfMonth, startOfWeek, eachDayOfInterval, getDay } from 'date-fns'
 import Modal from '../components/Modal'
 import type { Academy, CalEvent, DateStr, EventCategory } from '../types'
@@ -118,17 +118,19 @@ export default function Home({ data, weather, hourly, weatherFailed }: Props) {
 function HourlyStrip({ hours, isToday }: { hours: HourWeather[]; isToday: boolean }) {
   const nowHour = new Date().getHours()
   const shown = hours.filter((h) => h.hour >= 6 && h.hour <= 22)
+  const box = useRef<HTMLDivElement>(null)
+
+  // 가로로만 스크롤한다. (scrollIntoView는 화면 전체가 위아래로 튈 수 있다)
+  useEffect(() => {
+    const el = box.current
+    const now = el?.querySelector<HTMLElement>('.hr.now')
+    if (el && now) el.scrollLeft = now.offsetLeft - el.clientWidth / 2 + now.clientWidth / 2
+  }, [isToday, nowHour, hours])
+
   return (
-    <div className="hourly" role="list" aria-label="시간대별 날씨">
+    <div className="hourly" role="list" aria-label="시간대별 날씨" ref={box}>
       {shown.map((h) => (
-        <div
-          key={h.hour}
-          role="listitem"
-          className={`hr ${isToday && h.hour === nowHour ? 'now' : ''}`}
-          ref={(el) => {
-            if (el && isToday && h.hour === nowHour) el.scrollIntoView({ inline: 'center', block: 'nearest' })
-          }}
-        >
+        <div key={h.hour} role="listitem" className={`hr ${isToday && h.hour === nowHour ? 'now' : ''}`}>
           <small>{h.hour}시</small>
           <span className="ic">{h.icon}</span>
           <b>{h.temp}°</b>
@@ -159,15 +161,19 @@ export function DayDetail({
   const weekday = getDay(fromStr(date))
   const dues = dueMarksForRange(data.academies, data.sessions, date, date, today).get(date) ?? []
 
+  /** 그 날 결석/휴강 기록 (보강 기록은 제외) */
+  const findSkip = (academyId: string) =>
+    data.sessions.find((s) => s.academyId === academyId && s.date === date && s.status !== 'makeup')
+
   const classes = data.academies
     .filter((a) => regularDates(a, date, date).length > 0)
-    .map((a) => ({ a, rec: data.sessions.find((s) => s.academyId === a.id && s.date === date) }))
+    .map((a) => ({ a, rec: findSkip(a.id) }))
   const makeups = data.sessions
     .filter((s) => s.date === date && s.status === 'makeup')
     .map((s) => ({ s, a: data.academies.find((a) => a.id === s.academyId) }))
 
   const setStatus = async (academyId: string, status: 'absent' | 'cancelled' | null) => {
-    const existing = data.sessions.find((s) => s.academyId === academyId && s.date === date)
+    const existing = findSkip(academyId)
     if (existing) await data.remove('sessions', existing.id)
     if (status) await data.put('sessions', { id: newId(), academyId, date, status })
   }
@@ -179,7 +185,7 @@ export function DayDetail({
 
   /** 이 날 수업은 빠지는 것으로 보고(결석 처리), 정한 날짜에 보강 수업을 추가한다 */
   const addMakeup = async (academy: Academy, makeupDate: DateStr) => {
-    const rec = data.sessions.find((s) => s.academyId === academy.id && s.date === date)
+    const rec = findSkip(academy.id)
     if (!rec) await data.put('sessions', { id: newId(), academyId: academy.id, date, status: 'absent' })
     await data.put('sessions', { id: newId(), academyId: academy.id, date: makeupDate, status: 'makeup' })
     setMakeupFor(null)

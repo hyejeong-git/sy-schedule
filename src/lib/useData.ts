@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Academy, CalEvent, GrowthRecord, MealDay, SessionRecord, Settings } from '../types'
 import { DEFAULT_SETTINGS } from '../types'
+import { familyCodeProblem } from './familyCode'
 import { bundledMeals, mergeMeals } from './staticMeals'
 import { createFirebaseBackend, createLocalBackend, firebaseConfigured, type Backend, type Col } from './backend'
 
@@ -24,7 +25,8 @@ export function useData() {
   const [growth, setGrowth] = useState<GrowthRecord[]>([])
   const [settingsDoc, setSettingsDoc] = useState<Settings>(DEFAULT_SETTINGS)
 
-  const needFamilyCode = firebaseConfigured && !familyCode
+  // 저장된 코드가 규칙에 맞지 않아도(예: 예전에 '/'가 든 코드) 다시 입력하게 한다.
+  const needFamilyCode = firebaseConfigured && familyCodeProblem(familyCode) !== null
 
   useEffect(() => {
     if (needFamilyCode) return
@@ -44,16 +46,22 @@ export function useData() {
 
   useEffect(() => {
     if (!backend) return
+    const fail = (e: Error) =>
+      setError(
+        e.message.includes('permission')
+          ? '권한이 없어 데이터를 불러오지 못했어요. Firestore 규칙(firestore.rules)을 게시했는지 확인해 주세요.'
+          : `데이터를 불러오지 못했어요: ${e.message}`,
+      )
     const subs = [
-      backend.subscribe('events', (x) => setEvents(x as unknown as CalEvent[])),
-      backend.subscribe('academies', (x) => setAcademies(x as unknown as Academy[])),
-      backend.subscribe('sessions', (x) => setSessions(x as unknown as SessionRecord[])),
-      backend.subscribe('meals', (x) => setMeals(x as unknown as MealDay[])),
-      backend.subscribe('growth', (x) => setGrowth(x as unknown as GrowthRecord[])),
+      backend.subscribe('events', (x) => setEvents(x as unknown as CalEvent[]), fail),
+      backend.subscribe('academies', (x) => setAcademies(x as unknown as Academy[]), fail),
+      backend.subscribe('sessions', (x) => setSessions(x as unknown as SessionRecord[]), fail),
+      backend.subscribe('meals', (x) => setMeals(x as unknown as MealDay[]), fail),
+      backend.subscribe('growth', (x) => setGrowth(x as unknown as GrowthRecord[]), fail),
       backend.subscribe('settings', (x) => {
         const s = x.find((d) => d.id === 'main')
         if (s) setSettingsDoc({ ...DEFAULT_SETTINGS, ...(s as unknown as Settings) })
-      }),
+      }, fail),
     ]
     return () => subs.forEach((u) => u())
   }, [backend])
@@ -63,6 +71,14 @@ export function useData() {
     [backend],
   )
   const remove = useCallback((col: Col, id: string) => backend?.remove(col, id) ?? Promise.resolve(), [backend])
+
+  /** 연결 오류 화면에서 가족 코드를 다시 입력할 수 있게 한다 */
+  const resetFamilyCode = () => {
+    localStorage.removeItem(FAMILY_KEY)
+    setFamilyCodeState('')
+    setBackend(null)
+    setError('')
+  }
 
   const setFamilyCode = (code: string) => {
     localStorage.setItem(FAMILY_KEY, code.trim())
@@ -93,6 +109,7 @@ export function useData() {
     needFamilyCode,
     familyCode,
     setFamilyCode,
+    resetFamilyCode,
     events,
     academies,
     sessions,
