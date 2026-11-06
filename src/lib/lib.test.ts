@@ -1,9 +1,7 @@
 ﻿import { describe, expect, it } from 'vitest'
 import type { Academy, SessionRecord } from '../types'
 import { addMonthsClamped, dueMarksForRange, monthlyWindow, nextDue } from './billing'
-import { blockDates, cleanCellText, dayFromHeader, defaultFirstMonday } from './parseMeal'
-import { parseClaudeMeals } from './claudeMeals'
-import { findMealGrid, type Gray } from './tableGrid'
+import { bundledMeals, mergeMeals } from './staticMeals'
 import { countableDates, regularDates } from './recurrence'
 import { describeCode, parseDaily } from './weather'
 
@@ -119,76 +117,24 @@ describe('weather', () => {
 })
 
 
-describe('식단 글자 정리', () => {
-  it('줄마다 메뉴 하나, 기호 찌꺼기는 버린다', () => {
-    expect(cleanCellText('밀크롤인 \n우유 🌼\n ㅣ \n')).toBe('밀크롤인, 우유')
+describe('포함된 식단', () => {
+  it('11월은 평일 21일치(2~6, 9~13, 16~20, 23~27, 30)가 들어 있다', () => {
+    const nov = bundledMeals.filter((m) => m.date.startsWith('2026-11'))
+    expect(nov).toHaveLength(21)
+    for (const m of nov) {
+      const wd = new Date(m.date + 'T00:00:00').getDay()
+      expect(wd).toBeGreaterThanOrEqual(1)
+      expect(wd).toBeLessThanOrEqual(5)
+      expect(m.am && m.lunch && m.pm).toBeTruthy()
+    }
+    expect(nov.find((m) => m.date === '2026-11-06')?.pm).toBe('한과/기정떡, 유기농요구르트')
   })
-  it('날짜 칸에서 일 숫자를 읽는다', () => {
-    expect(dayFromHeader('10밀(화요일)')).toBe(10)
-    expect(dayFromHeader('abc')).toBeNull()
-  })
-  it('읽은 날짜를 다수결로 월요일 기준을 정한다', () => {
-    // 3번째 칸을 잘못 읽어도(11) 나머지가 맞으면 9~13일
-    const d = blockDates([9, 10, 99 % 31, 12, 13], 2026, 11, new Date(2026, 10, 2))
-    expect(d).toEqual(['2026-11-09', '2026-11-10', '2026-11-11', '2026-11-12', '2026-11-13'])
-  })
-  it('이번 달이 아닌 날은 제외', () => {
-    // 11월 30일(월)이 있는 주: 화~금은 12월
-    expect(blockDates([30, null, null, null, null], 2026, 11, new Date(2026, 10, 30))).toEqual([
-      '2026-11-30', null, null, null, null,
-    ])
-  })
-  it('읽은 날짜가 없으면 기본 추정 사용', () => {
-    expect(blockDates([null, null, null, null, null], 2026, 11, defaultFirstMonday(2026, 11))[0]).toBe('2026-11-02')
-    expect(defaultFirstMonday(2026, 10).getDate()).toBe(28) // 10/1(목)이 속한 주의 월요일은 9/28 
-  })
-})
-
-describe('표 칸 찾기', () => {
-  // 가짜 식단표: 4줄(날짜 20, 오전 36, 중식 110, 오후 36) × 2주, 열 8개 선
-  const W = 600
-  const ys = [10, 30, 66, 176, 212, 232, 268, 378, 414]
-  const xs = [10, 70, 160, 250, 340, 430, 520, 590]
-  const data = new Uint8Array(W * 450).fill(255)
-  for (const y of ys) for (let x = xs[0]; x <= xs[xs.length - 1]; x++) data[y * W + x] = 60
-  for (const x of xs) for (let y = ys[0]; y <= ys[ys.length - 1]; y++) data[y * W + x] = 60
-  const g: Gray = { width: W, height: 450, data }
-  it('주 블록과 월~금 열을 찾는다', () => {
-    const grid = findMealGrid(g)!
-    expect(grid.blocks).toHaveLength(2)
-    expect(grid.blocks[0].lunch).toEqual({ y0: 66, y1: 176 })
-    expect(grid.cols).toHaveLength(5)
-    expect(grid.cols[0]).toEqual([70, 160])
-    expect(grid.cols[4]).toEqual([430, 520])
-  })
-  it('표가 없으면 null', () => {
-    expect(findMealGrid({ width: 100, height: 100, data: new Uint8Array(10000).fill(255) })).toBeNull()
-  })
-})
-
-describe('Claude 식단 결과 정리', () => {
-  it('이번 달 평일만 남기고 잘못된 항목은 버린다', () => {
-    const r = parseClaudeMeals(
-      {
-        meals: [
-          { date: '2026-11-03', am: ' 우유 ', lunch: '밥, 국', pm: '과일' },
-          { date: '2026-11-07', am: '토요일', lunch: '', pm: '' }, // 토
-          { date: '2026-12-01', am: '다음 달', lunch: '', pm: '' },
-          { date: '11월 4일', am: '형식 오류', lunch: '', pm: '' },
-          { date: '2026-11-02', am: 5, lunch: '밥', pm: '' }, // 숫자는 빈 문자열로
-        ],
-      },
-      2026,
-      11,
+  it('앱에서 고친 식단이 포함된 식단보다 우선한다', () => {
+    const merged = mergeMeals(
+      [{ date: '2026-11-02', am: 'a', lunch: 'b', pm: 'c' }],
+      [{ date: '2026-11-02', am: 'x', lunch: 'b', pm: 'c' }, { date: '2026-12-01', am: 'n', lunch: '', pm: '' }],
     )
-    expect(r).toEqual([
-      { date: '2026-11-02', am: '', lunch: '밥', pm: '' },
-      { date: '2026-11-03', am: '우유', lunch: '밥, 국', pm: '과일' },
-    ])
-  })
-  it('이상한 입력은 빈 목록', () => {
-    expect(parseClaudeMeals(null, 2026, 11)).toEqual([])
-    expect(parseClaudeMeals({ meals: 'x' }, 2026, 11)).toEqual([])
+    expect(merged).toHaveLength(2)
+    expect(merged.find((m) => m.date === '2026-11-02')?.am).toBe('x')
   })
 })
-

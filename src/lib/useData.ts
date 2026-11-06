@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Academy, CalEvent, MealDay, SessionRecord, Settings } from '../types'
 import { DEFAULT_SETTINGS } from '../types'
+import { bundledMeals, mergeMeals } from './staticMeals'
 import { createFirebaseBackend, createLocalBackend, firebaseConfigured, type Backend, type Col } from './backend'
 
 export type Profile = 'grandma' | 'dad' | 'mom'
@@ -81,6 +82,7 @@ export function useData() {
     if (p === 'grandma' && !localStorage.getItem('sy:fontScale')) setFontScale(1.25)
   }
 
+  const mergedMeals = useMemo(() => mergeMeals(bundledMeals, meals), [meals])
   const settings = useMemo(() => ({ ...settingsDoc, fontScale }), [settingsDoc, fontScale])
 
   return {
@@ -92,7 +94,7 @@ export function useData() {
     events,
     academies,
     sessions,
-    meals,
+    meals: mergedMeals,
     settings,
     setFontScale,
     profile,
