@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { addDays, endOfMonth, format, startOfMonth } from 'date-fns'
 import type { DateStr, MealDay } from '../types'
 import type { Data } from '../lib/useData'
-import { readMonthlyMeals } from '../lib/ocrMeals'
+import { readMonthlyMeals, type MonthMeal } from '../lib/ocrMeals'
+import { getApiKey, readMealsWithClaude } from '../lib/claudeMeals'
 import { WEEKDAY_LABELS, fromStr, toStr } from '../lib/dates'
 
 type Fields = Pick<MealDay, 'am' | 'lunch' | 'pm'>
@@ -42,8 +43,30 @@ export default function Meals({ data }: { data: Data }) {
     setEdits((e) => ({ ...e, [date]: { ...valueOf(date), [key]: v } }))
   }
 
+  const [aiKey] = useState(getApiKey)
+  const [mode, setMode] = useState<'claude' | 'free'>('claude')
+  const useClaude = !!aiKey && mode === 'claude'
+
+  const apply = (found: MonthMeal[]) =>
+    setEdits((e) => {
+      const next = { ...e }
+      for (const m of found) next[m.date] = { am: m.am, lunch: m.lunch, pm: m.pm }
+      return next
+    })
+
   const onPhoto = async (file: File) => {
     setSaved(false)
+    if (useClaude) {
+      setBusy('Claude가 식단표를 읽는 중… (30초~1분)')
+      try {
+        apply(await readMealsWithClaude(file, month.getFullYear(), month.getMonth() + 1))
+      } catch (e) {
+        alert(e instanceof Error ? e.message : '식단을 읽지 못했어요.')
+      } finally {
+        setBusy('')
+      }
+      return
+    }
     setBusy('표를 찾는 중…')
     try {
       const found = await readMonthlyMeals(file, month.getFullYear(), month.getMonth() + 1, (done, total) =>
@@ -52,11 +75,7 @@ export default function Meals({ data }: { data: Data }) {
       if (!found) {
         alert('식단표의 표 모양을 찾지 못했어요. 표 전체가 반듯하게 보이는 사진(또는 캡처)으로 다시 올리거나 아래에 직접 입력해 주세요.')
       } else {
-        setEdits((e) => {
-          const next = { ...e }
-          for (const m of found) next[m.date] = { am: m.am, lunch: m.lunch, pm: m.pm }
-          return next
-        })
+        apply(found)
       }
     } catch {
       alert('사진을 읽지 못했어요. 아래에 직접 입력해 주세요.')
@@ -84,6 +103,14 @@ export default function Meals({ data }: { data: Data }) {
       <label>어느 달 식단표인가요?
         <input type="month" value={ym} onChange={(e) => e.target.value && (setYm(e.target.value), setEdits({}), setSaved(false))} />
       </label>
+      {aiKey ? (
+        <div className="sizes two">
+          <button className={mode === 'claude' ? 'on' : ''} onClick={() => setMode('claude')}>✨ Claude로 읽기 (정확)</button>
+          <button className={mode === 'free' ? 'on' : ''} onClick={() => setMode('free')}>무료 인식</button>
+        </div>
+      ) : (
+        <p className="hint">설정에서 Claude API 키를 넣으면 더 정확하게 읽을 수 있어요. 지금은 무료 인식으로 읽어요.</p>
+      )}
       <label className="filebtn">
         📷 월간 식단표 사진 올리기
         <input type="file" accept="image/*" hidden disabled={!!busy} onChange={(e) => e.target.files?.[0] && onPhoto(e.target.files[0])} />

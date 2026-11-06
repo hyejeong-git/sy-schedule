@@ -92,5 +92,6 @@ nav button.on { color: var(--pink); font-weight: 700; }
 .profiles.small button span { font-size: 1.6rem; }
 .profiles button.on { background: var(--pink-soft); border-color: var(--pink); }
 .sizes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.3rem; margin: 0.4rem 0; }
+.sizes.two { grid-template-columns: 1.6fr 1fr; margin-bottom: 0.5rem; }
 .sizes button.on { background: var(--pink); color: #fff; border-color: var(--pink); }
 .resultbtn { display: block; width: 100%; text-align: left; margin: 0.3rem 0; }

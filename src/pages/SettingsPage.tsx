@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { PROFILES, type Data } from '../lib/useData'
+import { getApiKey, setApiKey } from '../lib/claudeMeals'
 import { searchCity, type GeoResult } from '../lib/weather'
 
 const SIZES = [
@@ -13,6 +14,8 @@ export default function SettingsPage({ data }: { data: Data }) {
   const [q, setQ] = useState('')
   const [results, setResults] = useState<GeoResult[]>([])
   const [msg, setMsg] = useState('')
+  const [key, setKey] = useState(getApiKey)
+  const [keyMsg, setKeyMsg] = useState('')
 
   const search = async () => {
     setMsg('')
@@ -83,6 +86,27 @@ export default function SettingsPage({ data }: { data: Data }) {
             {r.name} {r.admin1 ? `(${r.admin1})` : ''}
           </button>
         ))}
+      </section>
+
+      <section className="card">
+        <h3>식단표 Claude 인식 (선택)</h3>
+        <p className="hint">
+          Anthropic API 키를 넣으면 식단표 사진을 더 정확하게 읽어요. 키는 이 기기에만 저장되고 가족 공유에는 올라가지 않아요.
+          사진 한 장을 읽을 때마다 소액이 청구됩니다. 식단표를 올리는 분 폰에만 넣으면 돼요.
+        </p>
+        <div className="row">
+          <input type="password" value={key} onChange={(e) => setKey(e.target.value)} placeholder="sk-ant-…" autoComplete="off" />
+          <button
+            className="small"
+            onClick={() => {
+              setApiKey(key)
+              setKeyMsg(key ? '저장했어요' : '삭제했어요')
+            }}
+          >
+            {key ? '저장' : '삭제'}
+          </button>
+        </div>
+        {keyMsg && <p className="ok">{keyMsg}</p>}
       </section>
 
       <section className="card">

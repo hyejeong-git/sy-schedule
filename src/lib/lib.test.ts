@@ -2,6 +2,7 @@
 import type { Academy, SessionRecord } from '../types'
 import { addMonthsClamped, dueMarksForRange, monthlyWindow, nextDue } from './billing'
 import { blockDates, cleanCellText, dayFromHeader, defaultFirstMonday } from './parseMeal'
+import { parseClaudeMeals } from './claudeMeals'
 import { findMealGrid, type Gray } from './tableGrid'
 import { countableDates, regularDates } from './recurrence'
 import { describeCode, parseDaily } from './weather'
@@ -164,3 +165,30 @@ describe('표 칸 찾기', () => {
     expect(findMealGrid({ width: 100, height: 100, data: new Uint8Array(10000).fill(255) })).toBeNull()
   })
 })
+
+describe('Claude 식단 결과 정리', () => {
+  it('이번 달 평일만 남기고 잘못된 항목은 버린다', () => {
+    const r = parseClaudeMeals(
+      {
+        meals: [
+          { date: '2026-11-03', am: ' 우유 ', lunch: '밥, 국', pm: '과일' },
+          { date: '2026-11-07', am: '토요일', lunch: '', pm: '' }, // 토
+          { date: '2026-12-01', am: '다음 달', lunch: '', pm: '' },
+          { date: '11월 4일', am: '형식 오류', lunch: '', pm: '' },
+          { date: '2026-11-02', am: 5, lunch: '밥', pm: '' }, // 숫자는 빈 문자열로
+        ],
+      },
+      2026,
+      11,
+    )
+    expect(r).toEqual([
+      { date: '2026-11-02', am: '', lunch: '밥', pm: '' },
+      { date: '2026-11-03', am: '우유', lunch: '밥, 국', pm: '과일' },
+    ])
+  })
+  it('이상한 입력은 빈 목록', () => {
+    expect(parseClaudeMeals(null, 2026, 11)).toEqual([])
+    expect(parseClaudeMeals({ meals: 'x' }, 2026, 11)).toEqual([])
+  })
+})
+
