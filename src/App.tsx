@@ -50,7 +50,7 @@ export default function App() {
         <h1>👧 소율이 일정</h1>
         <span className="who">
           {!data.sharing && <span className="badge warn">이 기기에만 저장 중</span>}
-          {me && <span>{me.icon} {me.label}</span>}
+          {me && <span>{me.icon} {me.short ?? me.label}</span>}
         </span>
       </header>
       <main>

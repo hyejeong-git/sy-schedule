@@ -120,3 +120,6 @@ label.check input { width: auto; }
 .mday { display: block; margin-bottom: 0.2rem; }
 .mealday .meal { margin-top: 0.2rem; }
 .mrow input { width: 100%; box-sizing: border-box; }
+/* 4번째 이후 항목(소율이를 사랑하는 가족)은 한 줄을 다 쓴다 */
+.profiles button:nth-child(n + 4) { grid-column: 1 / -1; }
+.profiles button:nth-child(n + 4) span { display: inline; font-size: 1.6rem; margin-right: 0.4rem; }
