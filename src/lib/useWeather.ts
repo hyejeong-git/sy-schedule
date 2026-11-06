@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import type { DateStr } from '../types'
-import { fetchForecast, type DayWeather } from './weather'
+import { fetchForecast, type Forecast } from './weather'
+
+const EMPTY: Forecast = { daily: {}, hourly: {} }
 
 /** 위치별 예보를 불러온다. 30분 동안은 기기에 캐시한다. */
 export function useWeather(lat: number, lon: number) {
-  const [data, setData] = useState<Record<DateStr, DayWeather>>({})
+  const [data, setData] = useState<Forecast>(EMPTY)
   const [failed, setFailed] = useState(false)
 
   useEffect(() => {
-    const key = `sy:weather:${lat.toFixed(2)},${lon.toFixed(2)}`
+    const key = `sy:weather2:${lat.toFixed(2)},${lon.toFixed(2)}`
     try {
       const cached = JSON.parse(localStorage.getItem(key) ?? 'null')
       if (cached && Date.now() - cached.at < 30 * 60 * 1000) {
@@ -32,5 +33,5 @@ export function useWeather(lat: number, lon: number) {
     }
   }, [lat, lon])
 
-  return { weather: data, weatherFailed: failed }
+  return { weather: data.daily, hourly: data.hourly, weatherFailed: failed }
 }

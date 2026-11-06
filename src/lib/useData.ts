@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Academy, CalEvent, MealDay, SessionRecord, Settings } from '../types'
+import type { Academy, CalEvent, GrowthRecord, MealDay, SessionRecord, Settings } from '../types'
 import { DEFAULT_SETTINGS } from '../types'
 import { bundledMeals, mergeMeals } from './staticMeals'
 import { createFirebaseBackend, createLocalBackend, firebaseConfigured, type Backend, type Col } from './backend'
@@ -21,6 +21,7 @@ export function useData() {
   const [academies, setAcademies] = useState<Academy[]>([])
   const [sessions, setSessions] = useState<SessionRecord[]>([])
   const [meals, setMeals] = useState<MealDay[]>([])
+  const [growth, setGrowth] = useState<GrowthRecord[]>([])
   const [settingsDoc, setSettingsDoc] = useState<Settings>(DEFAULT_SETTINGS)
 
   const needFamilyCode = firebaseConfigured && !familyCode
@@ -48,6 +49,7 @@ export function useData() {
       backend.subscribe('academies', (x) => setAcademies(x as unknown as Academy[])),
       backend.subscribe('sessions', (x) => setSessions(x as unknown as SessionRecord[])),
       backend.subscribe('meals', (x) => setMeals(x as unknown as MealDay[])),
+      backend.subscribe('growth', (x) => setGrowth(x as unknown as GrowthRecord[])),
       backend.subscribe('settings', (x) => {
         const s = x.find((d) => d.id === 'main')
         if (s) setSettingsDoc({ ...DEFAULT_SETTINGS, ...(s as unknown as Settings) })
@@ -95,6 +97,7 @@ export function useData() {
     academies,
     sessions,
     meals: mergedMeals,
+    growth,
     settings,
     setFontScale,
     profile,

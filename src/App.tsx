@@ -5,21 +5,23 @@ import { useWeather } from './lib/useWeather'
 import Home from './pages/Home'
 import Academies from './pages/Academies'
 import Meals from './pages/Meals'
+import Growth from './pages/Growth'
 import SettingsPage from './pages/SettingsPage'
 
-type Tab = 'today' | 'home' | 'academies' | 'meals' | 'settings'
+type Tab = 'today' | 'home' | 'academies' | 'meals' | 'growth' | 'settings'
 const TABS: { id: Tab; icon: string; label: string }[] = [
   { id: 'today', icon: '🏠', label: '오늘' },
   { id: 'home', icon: '📅', label: '달력' },
   { id: 'academies', icon: '🎒', label: '학원' },
   { id: 'meals', icon: '🍱', label: '식단' },
+  { id: 'growth', icon: '📏', label: '성장' },
   { id: 'settings', icon: '⚙️', label: '설정' },
 ]
 
 export default function App() {
   const data = useData()
   const [tab, setTab] = useState<Tab>('today')
-  const { weather, weatherFailed } = useWeather(data.settings.latitude, data.settings.longitude)
+  const { weather, hourly, weatherFailed } = useWeather(data.settings.latitude, data.settings.longitude)
 
   // 글자 크기: html 글자 크기를 바꾸면 rem을 쓰는 모든 요소가 같이 커진다.
   useEffect(() => {
@@ -43,10 +45,11 @@ export default function App() {
         </span>
       </header>
       <main>
-        {tab === 'today' && <Today data={data} weather={weather} />}
-        {tab === 'home' && <Home data={data} weather={weather} weatherFailed={weatherFailed} />}
+        {tab === 'today' && <Today data={data} weather={weather} hourly={hourly} />}
+        {tab === 'home' && <Home data={data} weather={weather} hourly={hourly} weatherFailed={weatherFailed} />}
         {tab === 'academies' && <Academies data={data} />}
         {tab === 'meals' && <Meals data={data} />}
+        {tab === 'growth' && <Growth data={data} />}
         {tab === 'settings' && <SettingsPage data={data} />}
       </main>
       <nav>

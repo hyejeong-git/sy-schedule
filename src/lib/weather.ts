@@ -62,15 +62,57 @@ export function parseDaily(json: DailyResponse): Record<DateStr, DayWeather> {
   return out
 }
 
-export async function fetchForecast(lat: number, lon: number): Promise<Record<DateStr, DayWeather>> {
+export interface HourWeather {
+  hour: number // 0~23
+  icon: string
+  text: string
+  temp: number
+  rainProb: number // %
+}
+
+interface HourlyResponse {
+  hourly: {
+    time: string[] // '2026-11-06T13:00'
+    weather_code: number[]
+    temperature_2m: number[]
+    precipitation_probability: (number | null)[]
+  }
+}
+
+/** Open-Meteo 시간별 응답 → 날짜별 시간 목록 */
+export function parseHourly(json: HourlyResponse): Record<DateStr, HourWeather[]> {
+  const h = json.hourly
+  const out: Record<DateStr, HourWeather[]> = {}
+  h.time.forEach((t, i) => {
+    const [date, clock] = t.split('T')
+    const info = describeCode(h.weather_code[i])
+    ;(out[date] ??= []).push({
+      hour: Number(clock.slice(0, 2)),
+      icon: info.icon,
+      text: info.text,
+      temp: Math.round(h.temperature_2m[i]),
+      rainProb: h.precipitation_probability[i] ?? 0,
+    })
+  })
+  return out
+}
+
+export interface Forecast {
+  daily: Record<DateStr, DayWeather>
+  hourly: Record<DateStr, HourWeather[]>
+}
+
+export async function fetchForecast(lat: number, lon: number): Promise<Forecast> {
   const url =
     'https://api.open-meteo.com/v1/forecast' +
     `?latitude=${lat}&longitude=${lon}` +
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum' +
+    '&hourly=weather_code,temperature_2m,precipitation_probability' +
     '&timezone=auto&forecast_days=16'
   const res = await fetch(url)
   if (!res.ok) throw new Error('날씨를 불러오지 못했어요')
-  return parseDaily(await res.json())
+  const json = await res.json()
+  return { daily: parseDaily(json), hourly: parseHourly(json) }
 }
 
 export interface GeoResult {

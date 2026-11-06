@@ -10,7 +10,7 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 
-export type Col = 'events' | 'academies' | 'sessions' | 'meals' | 'settings'
+export type Col = 'events' | 'academies' | 'sessions' | 'meals' | 'growth' | 'settings'
 type Doc = { id: string } & Record<string, unknown>
 
 export interface Backend {

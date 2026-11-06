@@ -6,7 +6,7 @@ import { newId } from '../lib/useData'
 import { dueMarksForRange } from '../lib/billing'
 import { regularDates } from '../lib/recurrence'
 import { WEEKDAY_LABELS, fromStr, todayStr, toStr } from '../lib/dates'
-import type { DayWeather } from '../lib/weather'
+import type { DayWeather, HourWeather } from '../lib/weather'
 
 const CAT: Record<EventCategory, { label: string; icon: string; color: string }> = {
   daycare: { label: '어린이집', icon: '🏫', color: '#4caf50' },
@@ -17,10 +17,11 @@ const CAT: Record<EventCategory, { label: string; icon: string; color: string }>
 interface Props {
   data: Data
   weather: Record<DateStr, DayWeather>
+  hourly: Record<DateStr, HourWeather[]>
   weatherFailed: boolean
 }
 
-export default function Home({ data, weather, weatherFailed }: Props) {
+export default function Home({ data, weather, hourly, weatherFailed }: Props) {
   const today = todayStr()
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [selected, setSelected] = useState<DateStr>(today)
@@ -107,12 +108,47 @@ export default function Home({ data, weather, weatherFailed }: Props) {
           )
         })}
       </div>
-      <DayDetail data={data} date={selected} weather={weather[selected]} />
+      <DayDetail data={data} date={selected} weather={weather[selected]} hours={hourly[selected]} />
     </>
   )
 }
 
-export function DayDetail({ data, date, weather }: { data: Data; date: DateStr; weather?: DayWeather }) {
+/** 시간대별 날씨 (6시~22시). 오늘이면 지금 시각을 강조하고 그 자리로 스크롤한다 */
+function HourlyStrip({ hours, isToday }: { hours: HourWeather[]; isToday: boolean }) {
+  const nowHour = new Date().getHours()
+  const shown = hours.filter((h) => h.hour >= 6 && h.hour <= 22)
+  return (
+    <div className="hourly" role="list" aria-label="시간대별 날씨">
+      {shown.map((h) => (
+        <div
+          key={h.hour}
+          role="listitem"
+          className={`hr ${isToday && h.hour === nowHour ? 'now' : ''}`}
+          ref={(el) => {
+            if (el && isToday && h.hour === nowHour) el.scrollIntoView({ inline: 'center', block: 'nearest' })
+          }}
+        >
+          <small>{h.hour}시</small>
+          <span className="ic">{h.icon}</span>
+          <b>{h.temp}°</b>
+          <small className={h.rainProb >= 50 ? 'rain' : ''}>☔{h.rainProb}%</small>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function DayDetail({
+  data,
+  date,
+  weather,
+  hours,
+}: {
+  data: Data
+  date: DateStr
+  weather?: DayWeather
+  hours?: HourWeather[]
+}) {
   const today = todayStr()
   const [title, setTitle] = useState('')
   const [time, setTime] = useState('')
@@ -167,6 +203,7 @@ export function DayDetail({ data, date, weather }: { data: Data; date: DateStr; 
           </div>
         </div>
       )}
+      {hours && hours.length > 0 && <HourlyStrip hours={hours} isToday={date === today} />}
 
       {dues.map(({ academy, kind }) => (
         <div key={academy.id} className="payrow" style={{ borderColor: academy.color }}>

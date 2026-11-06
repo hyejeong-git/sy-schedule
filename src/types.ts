@@ -55,6 +55,15 @@ export interface MealDay {
   pm: string
 }
 
+/** 키·몸무게 기록 (둘 중 하나만 있어도 됨) */
+export interface GrowthRecord {
+  id: string
+  date: DateStr
+  height?: number // cm
+  weight?: number // kg
+  place: string // 어디서 쟀는지
+}
+
 export interface Settings {
   fontScale: number // 1 = 보통
   city: string

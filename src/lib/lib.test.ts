@@ -3,7 +3,8 @@ import type { Academy, SessionRecord } from '../types'
 import { addMonthsClamped, dueMarksForRange, monthlyWindow, nextDue } from './billing'
 import { bundledMeals, mergeMeals, showAfterSlash } from './staticMeals'
 import { countableDates, regularDates } from './recurrence'
-import { describeCode, parseDaily } from './weather'
+import { chartPoints, lastChange, series } from './growth'
+import { describeCode, parseDaily, parseHourly } from './weather'
 
 const base = (over: Partial<Academy>): Academy => ({
   id: 'a1',
@@ -150,5 +151,49 @@ describe('슬래시 메뉴', () => {
     expect(nov.some((m) => (m.am + m.lunch + m.pm).includes('/'))).toBe(false)
     expect(nov.find((m) => m.date === '2026-11-26')?.lunch).toContain('한우우엉잡채')
     expect(nov.find((m) => m.date === '2026-11-02')?.lunch).toContain('흑미밥, 황태두부국')
+  })
+})
+
+describe('시간별 날씨', () => {
+  it('날짜별 시간 목록으로 바꾼다', () => {
+    const r = parseHourly({
+      hourly: {
+        time: ['2026-11-06T08:00', '2026-11-06T09:00', '2026-11-07T00:00'],
+        weather_code: [0, 61, 3],
+        temperature_2m: [4.4, 6.6, 3],
+        precipitation_probability: [0, 70, null],
+      },
+    })
+    expect(r['2026-11-06']).toEqual([
+      { hour: 8, icon: '☀️', text: '맑음', temp: 4, rainProb: 0 },
+      { hour: 9, icon: '🌧️', text: '비', temp: 7, rainProb: 70 },
+    ])
+    expect(r['2026-11-07'][0].rainProb).toBe(0)
+  })
+})
+
+describe('성장 기록', () => {
+  const recs = [
+    { id: '1', date: '2026-11-01', height: 108, weight: 17.5, place: '집' },
+    { id: '2', date: '2026-05-01', height: 104.2, place: '소아과' },
+    { id: '3', date: '2026-08-01', height: 106, weight: 17, place: '어린이집' },
+  ]
+  it('날짜순으로 정렬하고 값이 있는 것만 뽑는다', () => {
+    expect(series(recs, 'height').map((p) => p.date)).toEqual(['2026-05-01', '2026-08-01', '2026-11-01'])
+    expect(series(recs, 'weight').map((p) => p.value)).toEqual([17, 17.5])
+  })
+  it('직전 대비 변화량', () => {
+    expect(lastChange(series(recs, 'height'))).toBe(2)
+    expect(lastChange(series(recs, 'weight'))).toBe(0.5)
+    expect(lastChange(series(recs.slice(0, 1), 'height'))).toBeNull()
+  })
+  it('차트 좌표: 첫 점은 왼쪽, 마지막은 오른쪽, 큰 값일수록 위', () => {
+    const { pts } = chartPoints(series(recs, 'height'), 300, 200, 20)
+    expect(pts[0].x).toBe(20)
+    expect(pts[2].x).toBe(280)
+    expect(pts[2].y).toBeLessThan(pts[0].y)
+  })
+  it('점이 하나면 가운데', () => {
+    expect(chartPoints(series(recs.slice(0, 1), 'height'), 300, 200).pts[0].x).toBe(150)
   })
 })
