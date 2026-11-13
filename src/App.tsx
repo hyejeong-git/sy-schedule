@@ -22,7 +22,7 @@ const TABS: { id: Tab; icon: string; label: string }[] = [
 export default function App() {
   const data = useData()
   const [tab, setTab] = useState<Tab>('today')
-  const { weather, hourly, weatherFailed } = useWeather(data.settings.latitude, data.settings.longitude)
+  const { weather, hourly, status } = useWeather(data.settings.latitude, data.settings.longitude)
 
   // 글자 크기: html 글자 크기를 바꾸면 rem을 쓰는 모든 요소가 같이 커진다.
   useEffect(() => {
@@ -54,8 +54,8 @@ export default function App() {
         </span>
       </header>
       <main>
-        {tab === 'today' && <Today data={data} weather={weather} hourly={hourly} />}
-        {tab === 'home' && <Home data={data} weather={weather} hourly={hourly} weatherFailed={weatherFailed} />}
+        {tab === 'today' && <Today data={data} weather={weather} hourly={hourly} status={status} />}
+        {tab === 'home' && <Home data={data} weather={weather} hourly={hourly} status={status} />}
         {tab === 'academies' && <Academies data={data} />}
         {tab === 'meals' && <Meals data={data} />}
         {tab === 'growth' && <Growth data={data} />}

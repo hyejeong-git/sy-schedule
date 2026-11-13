@@ -8,6 +8,7 @@ import { dueMarksForRange } from '../lib/billing'
 import { regularDates } from '../lib/recurrence'
 import { WEEKDAY_LABELS, addDaysStr, fromStr, todayStr, toStr } from '../lib/dates'
 import type { DayWeather, HourWeather } from '../lib/weather'
+import type { WeatherStatus } from '../lib/useWeather'
 
 const CAT: Record<EventCategory, { label: string; icon: string; color: string }> = {
   daycare: { label: '어린이집', icon: '🏫', color: '#4caf50' },
@@ -19,10 +20,10 @@ interface Props {
   data: Data
   weather: Record<DateStr, DayWeather>
   hourly: Record<DateStr, HourWeather[]>
-  weatherFailed: boolean
+  status: WeatherStatus
 }
 
-export default function Home({ data, weather, hourly, weatherFailed }: Props) {
+export default function Home({ data, weather, hourly, status }: Props) {
   const today = todayStr()
   const [month, setMonth] = useState(() => startOfMonth(new Date()))
   const [selected, setSelected] = useState<DateStr>(today)
@@ -69,7 +70,7 @@ export default function Home({ data, weather, hourly, weatherFailed }: Props) {
           오늘
         </button>
       </div>
-      {weatherFailed && <p className="hint">날씨를 불러오지 못했어요 (인터넷 연결 확인)</p>}
+      <WeatherNotice status={status} />
 
       <div className="grid head">
         {WEEKDAY_LABELS.map((w, i) => (
@@ -109,7 +110,7 @@ export default function Home({ data, weather, hourly, weatherFailed }: Props) {
           )
         })}
       </div>
-      <DayDetail data={data} date={selected} weather={weather[selected]} hours={hourly[selected]} />
+      <DayDetail data={data} date={selected} weather={weather[selected]} hours={hourly[selected]} status={status} />
     </>
   )
 }
@@ -141,16 +142,30 @@ function HourlyStrip({ hours, isToday }: { hours: HourWeather[]; isToday: boolea
   )
 }
 
+/** 날씨를 못 불러왔을 때 이유와 다시 불러오기 버튼을 보여준다 (불러오는 중에도 안내) */
+export function WeatherNotice({ status }: { status: WeatherStatus }) {
+  if (status.loading) return <p className="hint">🌤️ 날씨를 불러오는 중…</p>
+  if (!status.error) return null
+  return (
+    <p className="hint warnText">
+      날씨를 불러오지 못했어요 — {status.error}{' '}
+      <button className="small" onClick={status.reload}>다시 불러오기</button>
+    </p>
+  )
+}
+
 export function DayDetail({
   data,
   date,
   weather,
   hours,
+  status,
 }: {
   data: Data
   date: DateStr
   weather?: DayWeather
   hours?: HourWeather[]
+  status?: WeatherStatus
 }) {
   const today = todayStr()
   const [eventOpen, setEventOpen] = useState(false)
@@ -198,7 +213,10 @@ export function DayDetail({
       </h2>
 
       <h3>🌤️ 날씨</h3>
-      {!weather && <p className="hint">이 날의 날씨 정보가 없어요 (예보는 오늘부터 약 16일까지)</p>}
+      {!weather && status && (status.loading || status.error) && <WeatherNotice status={status} />}
+      {!weather && !(status && (status.loading || status.error)) && (
+        <p className="hint">이 날의 날씨 정보가 없어요 (예보는 오늘부터 약 16일까지)</p>
+      )}
       {weather && (
         <div className={`weather ${weather.alert ? 'alert' : ''}`}>
           <span className="big">{weather.icon}</span>
