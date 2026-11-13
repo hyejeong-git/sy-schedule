@@ -109,10 +109,20 @@ export async function fetchForecast(lat: number, lon: number): Promise<Forecast>
     '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum' +
     '&hourly=weather_code,temperature_2m,precipitation_probability' +
     '&timezone=auto&forecast_days=16'
-  const res = await fetch(url)
-  if (!res.ok) throw new Error('날씨를 불러오지 못했어요')
-  const json = await res.json()
-  return { daily: parseDaily(json), hourly: parseHourly(json) }
+  const ctrl = new AbortController()
+  const timer = setTimeout(() => ctrl.abort(), 15000)
+  try {
+    const res = await fetch(url, { signal: ctrl.signal })
+    if (!res.ok) throw new Error(`날씨 서버 오류 (${res.status})`)
+    const json = await res.json()
+    if (!json?.daily?.time) throw new Error('날씨 서버 응답이 올바르지 않아요')
+    return { daily: parseDaily(json), hourly: json.hourly?.time ? parseHourly(json) : {} }
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith('날씨')) throw e
+    throw new Error(ctrl.signal.aborted ? '날씨 서버 응답이 너무 느려요' : '인터넷에 연결되지 않았거나 날씨 서버에 접속할 수 없어요')
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export interface GeoResult {
